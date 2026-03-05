@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import html2pdf from "html2pdf.js";
+import { Analytics } from "@vercel/analytics/react";
 
 // ============================================================
 // DATA: PLANES DE SUSCRIPCIÓN (ENERO 2026)
@@ -415,7 +416,8 @@ export default function App() {
   // ============================================================
   if (step === "form") {
     return (
-      <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a1628, #152a4a, #0d2137)", padding: "20px 12px" }}>
+      <>
+        <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a1628, #152a4a, #0d2137)", padding: "20px 12px" }}>
         <div style={{ maxWidth: 660, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 24 }}>
             {logoBase64 ? (
@@ -518,6 +520,8 @@ export default function App() {
           </div>
         </div>
       </div>
+      <Analytics />
+      </>
     );
   }
 
@@ -525,7 +529,8 @@ export default function App() {
   // PREVIEW
   // ============================================================
   return (
-    <div style={{ minHeight: "100vh", background: "#e2e8f0", padding: 16 }}>
+    <>
+      <div style={{ minHeight: "100vh", background: "#e2e8f0", padding: 16 }}>
       <style>{`@media print { .no-print { display: none !important; } }`}</style>
       <div className="no-print" style={{ maxWidth: 820, margin: "0 auto 12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <button onClick={() => setStep("form")} style={{ padding: "10px 20px", background: "white", border: "2px solid #cbd5e1", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#333" }}>
@@ -542,5 +547,7 @@ export default function App() {
         <DocPreview data={result} clientName={clientName} validez={validez} logoBase64={logoBase64} fotoUrl={fotoUrl} />
       </div>
     </div>
+    <Analytics />
+    </>
   );
 }
