@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import html2pdf from "html2pdf.js";
 
 // ============================================================
-// DATA: PLANES DE SUSCRIPCIÓN (ENERO 2026)
+// DATA: PLANES DE SUSCRIPCIÓN (ABRIL 2026)
 // ============================================================
 const PLANS = {
   ranger_xl: {
@@ -11,10 +11,17 @@ const PLANS = {
     schedule: { c1: 380000, c2_13: 509000, c14_16: 502000, c17Label: "Decreciente $445.000 a $384.000" },
     bono: { amount: 2321073, condition: "ranger" }, regalo: 1, regaloCondition: "ranger"
   },
+  ranger_xl_100: {
+    name: "Ranger XL 4x2 100%", label: "Ranger XL 4x2 (100% - 84c)", ratio: "100%", cuotas: 84,
+    vm: 50962700, ap: 607000, c1: 680000, cf: 808000, intMinPct: 0, intMin: 0,
+    schedule: { c1: 680000, c2_13: 808000, c14_16: 808000, c17Label: "Decreciente $748.000 a $686.000" },
+    bono: null, regalo: 0, regaloCondition: null,
+    adjCuota5: true, intCuota5: 24000000
+  },
   ranger_xls_v6: {
     name: "Ranger XLS V6", label: "Ranger XLS V6 (80/20 - 120c)", ratio: "80/20", cuotas: 120,
-    vm: 71502700, ap: 476685, c1: 534000, cf: 715000, intMinPct: 0.20, intMin: 14300540,
-    schedule: { c1: 534000, c2_13: 715000, c14_16: 705000, c17Label: "Decreciente $633.000 a $539.000" },
+    vm: 70072650, ap: 467151, c1: 520000, cf: 700000, intMinPct: 0.20, intMin: 14014530,
+    schedule: { c1: 520000, c2_13: 700000, c14_16: 690000, c17Label: "Decreciente $612.000 a $528.000" },
     bono: { amount: 2123844, condition: "ranger" }, regalo: 1, regaloCondition: "ranger"
   },
   maverick_xlt: {
@@ -25,9 +32,10 @@ const PLANS = {
   },
   territory_sel: {
     name: "Territory SEL", label: "Territory SEL (70/30 - 84c)", ratio: "70/30", cuotas: 84,
-    vm: 50114800, ap: 417623, c1: 468000, cf: 594000, intMinPct: 0.30, intMin: 15034440,
-    schedule: { c1: 468000, c2_13: 594000, c14_16: 584000, c17Label: "Decreciente $534.000 a $474.000" },
-    bono: null, regalo: 0, regaloCondition: null
+    vm: 48110210, ap: 400000, c1: 320000, cf: 450000, intMinPct: 0.30, intMin: 14433063,
+    schedule: { c1: 320000, c2_13: 450000, c14_16: 560000, c17Label: "Decreciente $505.000 a $456.000" },
+    bono: null, regalo: 0, regaloCondition: null,
+    promoAlicuota: { descPct: 0.30, apConDesc: 280643, nota: "30% bonif. sobre alícuota cuota 1 a 13 (promo abril)" }
   },
   transit_van: {
     name: "Transit Van", label: "Transit Van (70/30 - 84c)", ratio: "70/30", cuotas: 84,
@@ -37,28 +45,47 @@ const PLANS = {
   }
 };
 
+// ============================================================
+// DATA: MODELOS DE RETIRO (VM ABRIL 2026)
+// ============================================================
 const RETIRO_MODELS = [
   { group: "Ranger", models: [
-    { name: "Ranger XL 4x2", vm: 50962700 }, { name: "Ranger XL 4x4", vm: 55685660 },
-    { name: "Ranger XLS 2.0 MT", vm: 59042900 }, { name: "Ranger XLS V6", vm: 71502700 },
-    { name: "Ranger XLT 2.0 AT 4x2", vm: 68039730 }, { name: "Ranger XLT 2.0 AT 4x4", vm: 73702330 },
-    { name: "Ranger XLT V6", vm: 81718500 }, { name: "Ranger Black 4x4", vm: 69447900 },
-    { name: "Ranger LTD 2.0 4x4", vm: 79801820 }, { name: "Ranger LTD+ V6", vm: 88974530 },
-    { name: "Ranger Raptor", vm: 118900000 }
+    { name: "Ranger XL 4x2", vm: 50962700 },
+    { name: "Ranger XL 4x4", vm: 55685660 },
+    { name: "Ranger XLS 2.0 MT", vm: 59042900 },
+    { name: "Ranger XLS V6", vm: 70072650 },
+    { name: "Ranger XLT 2.0 AT 4x2", vm: 68727000 },
+    { name: "Ranger XLT 2.0 AT 4x4", vm: 74446800 },
+    { name: "Ranger XLT V6", vm: 80084130 },
+    { name: "Ranger Black 4x4", vm: 65975500 },
+    { name: "Ranger LTD 2.0 4x4", vm: 80607900 },
+    { name: "Ranger LTD+ V6", vm: 88974530 },
+    { name: "Ranger Raptor", vm: 114390000 }
   ]},
   { group: "SUV / Pickups", models: [
-    { name: "Territory SEL", vm: 50114800 }, { name: "Territory Titanium", vm: 58367200 },
-    { name: "Territory Trend HEV", vm: 53822600 }, { name: "Maverick XLT", vm: 55517200 },
-    { name: "Maverick Tremor", vm: 68651300 }, { name: "Maverick Lariat FHEV", vm: 66518900 },
-    { name: "Everest Titanium", vm: 93292200 }, { name: "Bronco Sport Big Bend", vm: 63143100 },
-    { name: "Bronco Sport Badlands", vm: 70297200 }, { name: "Big Bronco", vm: 103230000 },
-    { name: "Kuga Platinum", vm: 84718400 }, { name: "F-150 Híbrida Lariat", vm: 111600000 },
-    { name: "F-150 Raptor", vm: 146475000 }, { name: "F-150 Tremor", vm: 118575000 }
+    { name: "Territory SEL", vm: 48110210 },
+    { name: "Territory Titanium", vm: 56032510 },
+    { name: "Territory Trend HEV", vm: 51400580 },
+    { name: "Maverick XLT", vm: 55517200 },
+    { name: "Maverick Tremor", vm: 68651300 },
+    { name: "Maverick Lariat FHEV", vm: 66518900 },
+    { name: "Everest Titanium", vm: 91426360 },
+    { name: "Bronco Sport Big Bend", vm: 61880240 },
+    { name: "Bronco Sport Badlands", vm: 68891260 },
+    { name: "Big Bronco", vm: 103230000 },
+    { name: "Bronco Badlands", vm: 103230000 },
+    { name: "Kuga Platinum", vm: 84718400 },
+    { name: "F-150 Híbrida Lariat", vm: 111600000 },
+    { name: "F-150 Raptor", vm: 146475000 },
+    { name: "F-150 Tremor", vm: 114390000 }
   ]},
   { group: "Transit", models: [
-    { name: "Transit Chasis", vm: 74575830 }, { name: "Transit Van Mediana TN", vm: 66962810 },
-    { name: "Transit Van Mediana TE", vm: 70634770 }, { name: "Transit Van Larga TE MT", vm: 75917560 },
-    { name: "Transit Van Larga TE AT", vm: 80103340 }, { name: "Transit Minibus MT", vm: 97224550 },
+    { name: "Transit Chasis", vm: 74575830 },
+    { name: "Transit Van Mediana TN", vm: 66962810 },
+    { name: "Transit Van Mediana TE", vm: 70634770 },
+    { name: "Transit Van Larga TE MT", vm: 75917560 },
+    { name: "Transit Van Larga TE AT", vm: 80103340 },
+    { name: "Transit Minibus MT", vm: 97224550 },
     { name: "Transit Minibus AT", vm: 102929220 }
   ]}
 ];
@@ -100,7 +127,7 @@ function imageToBase64(url) {
 }
 
 // ============================================================
-// MOTOR DE CÁLCULO
+// MOTOR DE CÁLCULO (ABRIL 2026 - Patentamiento 7%)
 // ============================================================
 function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct) {
   const plan = PLANS[planKey];
@@ -110,18 +137,29 @@ function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct) {
   const vmPlan = plan.vm;
   const vmRetiro = retiro.vm;
   const gastosGestion = 1500000;
+  const patPct = 0.07; // Abril 2026: 7%
   const diffModelo = vmRetiro > vmPlan ? vmRetiro - vmPlan : 0;
-  const patBruto = vmRetiro * 0.055;
+  const patBruto = vmRetiro * patPct;
   const patNeto = patBruto * (1 - bonifPatentPct);
   const totalGastos = diffModelo + gastosGestion + patNeto;
   const ofertaReal = capital - totalGastos;
 
+  // Plan 100%: no tiene integración mínima ni bonos
+  const is100 = plan.ratio === "100%";
+
   let bono = 0, regalo = 0;
-  if (plan.bono && plan.bono.condition === "ranger" && isRanger(retiroName)) bono = plan.bono.amount;
+  if (!is100 && plan.bono && plan.bono.condition === "ranger" && isRanger(retiroName)) bono = plan.bono.amount;
   if (plan.regaloCondition === "ranger" && isRanger(retiroName)) regalo = plan.regalo;
   else if (!plan.regaloCondition && plan.regalo > 0) regalo = plan.regalo;
 
-  let saldoAdelanto = Math.max(0, ofertaReal - plan.intMin) + bono;
+  let saldoAdelanto;
+  if (is100) {
+    // Plan 100%: toda la oferta real va a adelanto (no hay integración mínima)
+    saldoAdelanto = ofertaReal;
+  } else {
+    saldoAdelanto = Math.max(0, ofertaReal - plan.intMin) + bono;
+  }
+
   let creditoModelo = 0;
   if (vmRetiro < vmPlan) { creditoModelo = vmPlan - vmRetiro; saldoAdelanto += creditoModelo; }
 
@@ -144,13 +182,13 @@ function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct) {
 
   return {
     plan, planKey, vmPlan, vmRetiro, retiroName, gastosGestion, diffModelo,
-    patBruto, patNeto, bonifPatentPct, totalGastos, ofertaReal, bono, regalo,
+    patBruto, patNeto, patPct, bonifPatentPct, totalGastos, ofertaReal, bono, regalo,
     creditoModelo, saldoAdelanto, nAdelanto, cuotasRestantes, pujaPct, prob, probColor,
     ahorroPatent, descC1Pct, descC1Monto, c1Display,
     proj1Monthly, proj1Months, proj2Monthly, proj2Months,
     totalAhorro: ahorroPatent + descC1Monto,
-    excedentePujaBono: Math.max(0, ofertaReal - plan.intMin) + bono,
-    capital
+    excedentePujaBono: Math.max(0, ofertaReal - (is100 ? 0 : plan.intMin)) + bono,
+    capital, is100
   };
 }
 
@@ -173,6 +211,10 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
     <div style={{ background: B, color: "white", padding: "8px 12px", fontWeight: 900, fontSize: 11, textTransform: "uppercase", letterSpacing: 1 }}>{children}</div>
   );
 
+  const intLabel = d.is100 ? "Integración Cuota 5" : `Integración Mínima (${Math.round(p.intMinPct*100)}%)`;
+  const intValue = d.is100 ? fmt(p.intCuota5) : fmt(p.intMin);
+  const finPct = d.is100 ? 100 : Math.round((1 - p.intMinPct) * 100);
+
   return (
     <div style={{ fontFamily: "'Segoe UI',Roboto,system-ui,sans-serif", fontSize: 11, color: "#333", background: "white" }}>
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "24px 28px" }}>
@@ -187,7 +229,7 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontWeight: 900, fontSize: 17, color: B, textTransform: "uppercase" }}>Hoja de Gestión Oficial</div>
-            <div style={{ fontSize: 11, color: "#666" }}>Marzo 2026</div>
+            <div style={{ fontSize: 11, color: "#666" }}>Abril 2026</div>
             <span style={{ background: "#fef2f2", color: "#d32f2f", fontWeight: 800, padding: "2px 8px", borderRadius: 4, fontSize: 10, display: "inline-block", marginTop: 3 }}>Válido hasta {validez}</span>
           </div>
         </div>
@@ -213,8 +255,8 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
               <div style={{ padding: 10 }}>
                 <Row label={`Valor Plan ${p.name} *`} value={`${fmt(d.vmPlan)}*`} />
                 <Row label={`Valor ${d.retiroName} (Retiro) *`} value={`${fmt(d.vmRetiro)}*`} />
-                <Row label={`Integración Mínima (${Math.round(p.intMinPct*100)}%) *`} value={`${fmt(p.intMin)}*`} />
-                <Row label={`Saldo a financiar (${Math.round((1-p.intMinPct)*100)}%)`} value={`${fmt(d.vmPlan*(1-p.intMinPct))}*`} color="#666" />
+                <Row label={`${intLabel} *`} value={`${intValue}*`} />
+                <Row label={`Saldo a financiar (${finPct}%)`} value={`${fmt(d.is100 ? d.vmPlan : d.vmPlan*(1-p.intMinPct))}*`} color="#666" />
                 <div style={{ background: "#eef6ff", padding: 10, borderRadius: 4, marginTop: 8, border: "1px solid #2D96CD", textAlign: "center" }}>
                   <div style={{ fontWeight: 900, color: B, fontSize: 9, textTransform: "uppercase" }}>Unidad de Retiro (Cambio de Modelo)</div>
                   <div style={{ fontWeight: 900, fontSize: 13, color: B }}>{d.retiroName.toUpperCase()}</div>
@@ -264,19 +306,34 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
                   </div>
                   {d.descC1Pct > 0 && <div style={{ fontSize: 9, color: "#166534", marginTop: 2 }}>🎁 <strong>{Math.round(d.descC1Pct*100)}% de Descuento</strong> con Tarjeta de Crédito</div>}
                 </div>
-                <Row label="Cuota 2 (Licitación)" value={`${fmt(p.schedule.c2_13)}*`} />
+                <Row label={d.is100 ? "Cuota 2 a 5" : "Cuota 2 (Licitación)"} value={`${fmt(p.schedule.c2_13)}*`} />
                 <div style={{ background: "#fff8e1", border: "2px solid #ffc107", padding: 8, borderRadius: 4, margin: "6px 0" }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>🔒 <strong>Cuota 3 a 13</strong></span>
-                    <strong style={{ fontSize: 14, color: "#d32f2f" }}>{fmt(p.schedule.c2_13)}* ¡FIJAS!</strong>
+                    <span>🔒 <strong>{d.is100 ? "Cuota 6 a 16" : "Cuota 3 a 13"}</strong></span>
+                    <strong style={{ fontSize: 14, color: "#d32f2f" }}>{fmt(d.is100 ? p.schedule.c14_16 : p.schedule.c2_13)}* ¡FIJAS!</strong>
                   </div>
                 </div>
-                <Row label="Cuota 14 a 16" value={`${fmt(p.schedule.c14_16)}*`} />
-                <Row label="Cuota 17 al final" value="Esquema Decreciente*" />
+                {!d.is100 && <Row label="Cuota 14 a 16" value={`${fmt(p.schedule.c14_16)}*`} />}
+                <Row label={`Cuota 17 al final`} value="Esquema Decreciente*" />
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderTop: `2px solid ${B}`, marginTop: 10 }}>
                   <strong>ALÍCUOTA PURA (Para adelantos)</strong>
                   <strong style={{ color: B, fontSize: 13 }}>{fmt(p.ap)}*</strong>
                 </div>
+
+                {/* Promo Territory */}
+                {p.promoAlicuota && (
+                  <div style={{ background: "#fef3c7", border: "1px solid #f59e0b", padding: 6, borderRadius: 4, marginTop: 6, fontSize: 9, color: "#92400e" }}>
+                    🏷️ <strong>Promo Abril:</strong> {p.promoAlicuota.nota}
+                  </div>
+                )}
+
+                {/* Plan 100% nota */}
+                {d.is100 && (
+                  <div style={{ background: "#eff6ff", border: "1px solid #3b82f6", padding: 6, borderRadius: 4, marginTop: 6, fontSize: 9, color: "#1e40af" }}>
+                    📌 <strong>Plan 100% financiado.</strong> Adjudicación asegurada en cuota 5. Integración: {fmt(p.intCuota5)}.
+                  </div>
+                )}
+
                 <table style={{ width: "100%", marginTop: 10, borderCollapse: "collapse", fontSize: 10, background: "#f9f9f9" }}>
                   <thead><tr>
                     <th style={{ background: "#eef2f7", color: B, padding: 6, textAlign: "left", fontSize: 9, textTransform: "uppercase" }}>Si pagás mensualmente:</th>
@@ -316,7 +373,7 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
 
         {/* LEGAL */}
         <div style={{ marginTop: 12, fontSize: 7.5, color: "#888", textAlign: "justify", borderTop: "1px solid #ddd", paddingTop: 8 }}>
-          * Valores de referencia según valor móvil 01/01/2026. ** Cuotas fijas por contrato de la 3 a la 13. El beneficio del {Math.round(d.bonifPatentPct*100)}% aplica sobre aranceles de patentamiento. {d.descC1Pct > 0 ? `El descuento del ${Math.round(d.descC1Pct*100)}% en cuota 1 es mediante reintegro o descuento directo con Tarjeta de Crédito. ` : ""}Sujeto a peritaje final del usado y aprobación crediticia de Ford Plan Óvalo.
+          * Valores de referencia según valor móvil 01/04/2026. ** Cuotas fijas por contrato de la {d.is100 ? "2 a la 16" : "3 a la 13"}. El beneficio del {Math.round(d.bonifPatentPct*100)}% aplica sobre aranceles de patentamiento. {d.descC1Pct > 0 ? `El descuento del ${Math.round(d.descC1Pct*100)}% en cuota 1 es mediante reintegro o descuento directo con Tarjeta de Crédito. ` : ""}Sujeto a peritaje final del usado y aprobación crediticia de Ford Plan Óvalo.
         </div>
       </div>
     </div>
@@ -335,7 +392,7 @@ export default function App() {
   const [capital, setCapital] = useState("");
   const [bonifPat, setBonifPat] = useState("1.0");
   const [descC1, setDescC1] = useState("0.5");
-  const [validez, setValidez] = useState("20/03/26");
+  const [validez, setValidez] = useState("20/04/26");
   const [fotoUrl, setFotoUrl] = useState("");
   const [customFoto, setCustomFoto] = useState(false);
   const [logoBase64, setLogoBase64] = useState("");
@@ -343,7 +400,6 @@ export default function App() {
   const [exporting, setExporting] = useState(false);
   const printRef = useRef(null);
 
-  // Convertir logo a base64 una sola vez al arrancar
   useEffect(() => {
     imageToBase64("/logofordgoldstein.png").then((b64) => {
       if (b64) setLogoBase64(b64);
@@ -424,7 +480,7 @@ export default function App() {
               <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginBottom: 8 }}>Ford | Goldstein</div>
             )}
             <h1 style={{ fontSize: 26, fontWeight: 900, color: "white", margin: "4px 0" }}>Simulador Óvalo</h1>
-            <div style={{ fontSize: 12, color: "#6b8db5" }}>Motor de cálculo integrado — Valores Enero 2026</div>
+            <div style={{ fontSize: 12, color: "#6b8db5" }}>Motor de cálculo integrado — Valores Abril 2026</div>
           </div>
 
           <div style={{ background: "white", borderRadius: 16, padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
@@ -485,6 +541,20 @@ export default function App() {
               <input type="file" accept="image/*" onChange={e => handleImg(e, setFotoUrl, setCustomFoto)} style={{ fontSize: 11 }} />
               {fotoUrl && <img src={fotoUrl} alt="" style={{ height: 40, marginTop: 6, objectFit: "contain" }} />}
             </div>
+
+            {/* Plan 100% info */}
+            {planKey === "ranger_xl_100" && (
+              <div style={{ background: "#eff6ff", border: "2px solid #3b82f6", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#1e40af" }}>
+                📌 <strong>Plan 100% financiado:</strong> Adjudicación asegurada en cuota 5. Sin integración mínima. Sin bono Ford.
+              </div>
+            )}
+
+            {/* Promo Territory */}
+            {planKey === "territory_sel" && (
+              <div style={{ background: "#fef3c7", border: "2px solid #f59e0b", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#92400e" }}>
+                🏷️ <strong>Promo Abril:</strong> 30% de bonificación sobre alícuota de cuota 1 a 13. Cuota fija resultante: $450.000.
+              </div>
+            )}
 
             {liveCalc && liveCalc.ofertaReal > 0 && (
               <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: 14, marginBottom: 16 }}>
