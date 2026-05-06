@@ -272,7 +272,7 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
                 <p style={{ fontSize: 7.5, opacity: 0.7, fontStyle: "italic", marginBottom: 8, lineHeight: 1.2 }}>° Valor de referencia aproximado. Sujeto a tasación al momento de licitar.-</p>
                 <Row label="(-) Gastos de Gestión:" value={`${fmt(d.gastosGestion)}*`} color="#d32f2f" />
                 <Row label="(-) Diferencia Modelo:" value={d.diffModelo > 0 ? `${fmt(d.diffModelo)}*` : "$0*"} color="#d32f2f" />
-                <Row label={`(-) Patentamiento (${Math.round(d.bonifPatentPct*100)}% BONIF.):`} value={d.patNeto === 0 ? "$0*" : `${fmt(d.patNeto)}*`} color="#16a34a" />
+                <Row label={`(-) Patentamiento (${Math.round(d.bonifPatentPct*100)}% BONIF.):`} value={d.patNeto === 0 ? "$0*" : `${fmt(d.patNeto)}*`} color={d.patNeto === 0 ? "#16a34a" : "#dc2626"} />
                 <div style={{ background: "#1a1a1a", color: "white", padding: 10, textAlign: "center", borderRadius: 4, margin: "10px 0" }}>
                   <div style={{ fontSize: 9, textTransform: "uppercase", marginBottom: 2 }}>Oferta de Licitación Neta (Puja)</div>
                   <strong style={{ fontSize: 16 }}>{fmt(d.ofertaReal)}*</strong>
