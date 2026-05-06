@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import html2pdf from "html2pdf.js";
+import { Analytics } from "@vercel/analytics/react";
 
 // ============================================================
-// DATA: PLANES DE SUSCRIPCIÓN (ABRIL 2026)
+// DATA: PLANES DE SUSCRIPCIÓN (MAYO 2026)
 // ============================================================
 const PLANS = {
   ranger_xl: {
@@ -20,14 +21,14 @@ const PLANS = {
   },
   ranger_xls_v6: {
     name: "Ranger XLS V6", label: "Ranger XLS V6 (80/20 - 120c)", ratio: "80/20", cuotas: 120,
-    vm: 70072650, ap: 467151, c1: 520000, cf: 700000, intMinPct: 0.20, intMin: 14014530,
-    schedule: { c1: 520000, c2_13: 700000, c14_16: 690000, c17Label: "Decreciente $612.000 a $528.000" },
+    vm: 66497510, ap: 443317, c1: 520000, cf: 665000, intMinPct: 0.20, intMin: 13299502,
+    schedule: { c1: 520000, c2_13: 665000, c14_16: 589000, c17Label: "Decreciente $580.000 a $500.000" },
     bono: { amount: 2123844, condition: "ranger" }, regalo: 1, regaloCondition: "ranger"
   },
   maverick_xlt: {
     name: "Maverick XLT", label: "Maverick XLT (70/30 - 84c)", ratio: "70/30", cuotas: 84,
-    vm: 55517200, ap: 462643, c1: 510000, cf: 655000, intMinPct: 0.30, intMin: 16655160,
-    schedule: { c1: 510000, c2_13: 655000, c14_16: 642000, c17Label: "Decreciente $577.000 a $520.000" },
+    vm: 56627500, ap: 471896, c1: 510000, cf: 671000, intMinPct: 0.30, intMin: 16988250,
+    schedule: { c1: 510000, c2_13: 671000, c14_16: 604000, c17Label: "Decreciente $595.000 a $534.000" },
     bono: null, regalo: 0, regaloCondition: null
   },
   territory_sel: {
@@ -35,58 +36,64 @@ const PLANS = {
     vm: 48110210, ap: 400000, c1: 320000, cf: 450000, intMinPct: 0.30, intMin: 14433063,
     schedule: { c1: 320000, c2_13: 450000, c14_16: 560000, c17Label: "Decreciente $505.000 a $456.000" },
     bono: null, regalo: 0, regaloCondition: null,
-    promoAlicuota: { descPct: 0.30, apConDesc: 280643, nota: "30% bonif. sobre alícuota cuota 1 a 13 (promo abril)" }
+    promoAlicuota: { descPct: 0.30, apConDesc: 280643, nota: "30% bonif. sobre alícuota cuota 1 a 13 (promo mayo)" }
   },
   transit_van: {
     name: "Transit Van", label: "Transit Van (70/30 - 84c)", ratio: "70/30", cuotas: 84,
-    vm: 66962810, ap: 558023, c1: 625000, cf: 794000, intMinPct: 0.30, intMin: 20088843,
-    schedule: { c1: 625000, c2_13: 794000, c14_16: 780000, c17Label: "Decreciente $703.000 a $634.000" },
+    vm: 66279520, ap: 552329, c1: 620000, cf: 786000, intMinPct: 0.30, intMin: 19883856,
+    schedule: { c1: 620000, c2_13: 786000, c14_16: 707000, c17Label: "Decreciente $696.000 a $627.000" },
     bono: null, regalo: 2, regaloCondition: null
   }
 };
 
 // ============================================================
-// DATA: MODELOS DE RETIRO (VM ABRIL 2026)
+// DATA: MODELOS DE RETIRO (VM MAYO 2026)
 // ============================================================
 const RETIRO_MODELS = [
   { group: "Ranger", models: [
-    { name: "Ranger XL 4x2", vm: 50962700 },
-    { name: "Ranger XL 4x4", vm: 55685660 },
-    { name: "Ranger XLS 2.0 MT", vm: 59042900 },
-    { name: "Ranger XLS V6", vm: 70072650 },
+    { name: "Ranger XL 4x2 MT", vm: 50962700 },
+    { name: "Ranger XL 4x2 AT", vm: 51400000 },
+    { name: "Ranger XL 4x4 MT", vm: 55685660 },
+    { name: "Ranger XL 4x4 AT", vm: 56200000 },
+    { name: "Ranger CS XL 4x2 MT", vm: 43500000 },
+    { name: "Ranger CS XL 4x4 MT", vm: 52000000 },
+    { name: "Ranger CH XL 4x4 MT", vm: 49500000 },
+    { name: "Ranger XLS 2.0 MT", vm: 56090750 },
+    { name: "Ranger XLS V6", vm: 66497510 },
     { name: "Ranger XLT 2.0 AT 4x2", vm: 68727000 },
     { name: "Ranger XLT 2.0 AT 4x4", vm: 74446800 },
-    { name: "Ranger XLT V6", vm: 80084130 },
-    { name: "Ranger Black 4x4", vm: 65975500 },
+    { name: "Ranger XLT V6", vm: 75998200 },
+    { name: "Ranger Black 4x4 MT", vm: 65975500 },
+    { name: "Ranger Black 4x2 AT", vm: 63800000 },
     { name: "Ranger LTD 2.0 4x4", vm: 80607900 },
-    { name: "Ranger LTD+ V6", vm: 88974530 },
+    { name: "Ranger LTD+ V6", vm: 84291660 },
     { name: "Ranger Raptor", vm: 114390000 }
   ]},
   { group: "SUV / Pickups", models: [
     { name: "Territory SEL", vm: 48110210 },
     { name: "Territory Titanium", vm: 56032510 },
     { name: "Territory Trend HEV", vm: 51400580 },
-    { name: "Maverick XLT", vm: 55517200 },
-    { name: "Maverick Tremor", vm: 68651300 },
-    { name: "Maverick Lariat FHEV", vm: 66518900 },
-    { name: "Everest Titanium", vm: 91426360 },
-    { name: "Bronco Sport Big Bend", vm: 61880240 },
-    { name: "Bronco Sport Badlands", vm: 68891260 },
+    { name: "Maverick XLT", vm: 56627500 },
+    { name: "Maverick Tremor", vm: 70024300 },
+    { name: "Maverick Lariat FHEV", vm: 67849300 },
+    { name: "Everest Titanium", vm: 89560510 },
+    { name: "Bronco Sport Big Bend", vm: 61248810 },
+    { name: "Bronco Sport Badlands", vm: 68188280 },
     { name: "Big Bronco", vm: 103230000 },
     { name: "Bronco Badlands", vm: 103230000 },
     { name: "Kuga Platinum", vm: 84718400 },
-    { name: "F-150 Híbrida Lariat", vm: 111600000 },
+    { name: "F-150 Híbrida Lariat", vm: 114390000 },
     { name: "F-150 Raptor", vm: 146475000 },
     { name: "F-150 Tremor", vm: 114390000 }
   ]},
   { group: "Transit", models: [
-    { name: "Transit Chasis", vm: 74575830 },
-    { name: "Transit Van Mediana TN", vm: 66962810 },
-    { name: "Transit Van Mediana TE", vm: 70634770 },
-    { name: "Transit Van Larga TE MT", vm: 75917560 },
-    { name: "Transit Van Larga TE AT", vm: 80103340 },
-    { name: "Transit Minibus MT", vm: 97224550 },
-    { name: "Transit Minibus AT", vm: 102929220 }
+    { name: "Transit Chasis", vm: 73807010 },
+    { name: "Transit Van Mediana TN", vm: 66279520 },
+    { name: "Transit Van Mediana TE", vm: 69914010 },
+    { name: "Transit Van Larga TE MT", vm: 75142890 },
+    { name: "Transit Van Larga TE AT", vm: 79285960 },
+    { name: "Transit Minibus MT", vm: 96222240 },
+    { name: "Transit Minibus AT", vm: 101868100 }
   ]}
 ];
 
@@ -105,6 +112,7 @@ const MODEL_PHOTOS = {
 const allRetiroModels = RETIRO_MODELS.flatMap(g => g.models);
 const isRanger = (name) => name.toLowerCase().startsWith("ranger");
 const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
+const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
 
 // ============================================================
 // HELPER: Convertir imagen URL a base64
@@ -127,7 +135,7 @@ function imageToBase64(url) {
 }
 
 // ============================================================
-// MOTOR DE CÁLCULO (ABRIL 2026 - Patentamiento 7%)
+// MOTOR DE CÁLCULO (MAYO 2026 - Patentamiento 7%)
 // ============================================================
 function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct) {
   const plan = PLANS[planKey];
@@ -137,14 +145,13 @@ function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct) {
   const vmPlan = plan.vm;
   const vmRetiro = retiro.vm;
   const gastosGestion = 1500000;
-  const patPct = 0.07; // Abril 2026: 7%
+  const patPct = 0.07;
   const diffModelo = vmRetiro > vmPlan ? vmRetiro - vmPlan : 0;
   const patBruto = vmRetiro * patPct;
   const patNeto = patBruto * (1 - bonifPatentPct);
   const totalGastos = diffModelo + gastosGestion + patNeto;
   const ofertaReal = capital - totalGastos;
 
-  // Plan 100%: no tiene integración mínima ni bonos
   const is100 = plan.ratio === "100%";
 
   let bono = 0, regalo = 0;
@@ -154,7 +161,6 @@ function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct) {
 
   let saldoAdelanto;
   if (is100) {
-    // Plan 100%: toda la oferta real va a adelanto (no hay integración mínima)
     saldoAdelanto = ofertaReal;
   } else {
     saldoAdelanto = Math.max(0, ofertaReal - plan.intMin) + bono;
@@ -229,7 +235,7 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontWeight: 900, fontSize: 17, color: B, textTransform: "uppercase" }}>Hoja de Gestión Oficial</div>
-            <div style={{ fontSize: 11, color: "#666" }}>Abril 2026</div>
+            <div style={{ fontSize: 11, color: "#666" }}>Mayo 2026</div>
             <span style={{ background: "#fef2f2", color: "#d32f2f", fontWeight: 800, padding: "2px 8px", borderRadius: 4, fontSize: 10, display: "inline-block", marginTop: 3 }}>Válido hasta {validez}</span>
           </div>
         </div>
@@ -314,20 +320,18 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
                   </div>
                 </div>
                 {!d.is100 && <Row label="Cuota 14 a 16" value={`${fmt(p.schedule.c14_16)}*`} />}
-                <Row label={`Cuota 17 al final`} value="Esquema Decreciente*" />
+                <Row label="Cuota 17 al final" value="Esquema Decreciente*" />
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderTop: `2px solid ${B}`, marginTop: 10 }}>
                   <strong>ALÍCUOTA PURA (Para adelantos)</strong>
                   <strong style={{ color: B, fontSize: 13 }}>{fmt(p.ap)}*</strong>
                 </div>
 
-                {/* Promo Territory */}
                 {p.promoAlicuota && (
                   <div style={{ background: "#fef3c7", border: "1px solid #f59e0b", padding: 6, borderRadius: 4, marginTop: 6, fontSize: 9, color: "#92400e" }}>
-                    🏷️ <strong>Promo Abril:</strong> {p.promoAlicuota.nota}
+                    🏷️ <strong>Promo Mayo:</strong> {p.promoAlicuota.nota}
                   </div>
                 )}
 
-                {/* Plan 100% nota */}
                 {d.is100 && (
                   <div style={{ background: "#eff6ff", border: "1px solid #3b82f6", padding: 6, borderRadius: 4, marginTop: 6, fontSize: 9, color: "#1e40af" }}>
                     📌 <strong>Plan 100% financiado.</strong> Adjudicación asegurada en cuota 5. Integración: {fmt(p.intCuota5)}.
@@ -368,12 +372,10 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
           </div>
         </div>
 
-        {/* FOOTER IMAGE */}
         {fotoUrl && <div style={{ marginTop: 12, textAlign: "center", borderTop: "1px solid #eee", paddingTop: 10 }}><img src={fotoUrl} alt="Unidad" style={{ maxWidth: "70%", maxHeight: 160, objectFit: "contain" }} /></div>}
 
-        {/* LEGAL */}
         <div style={{ marginTop: 12, fontSize: 7.5, color: "#888", textAlign: "justify", borderTop: "1px solid #ddd", paddingTop: 8 }}>
-          * Valores de referencia según valor móvil 01/04/2026. ** Cuotas fijas por contrato de la {d.is100 ? "2 a la 16" : "3 a la 13"}. El beneficio del {Math.round(d.bonifPatentPct*100)}% aplica sobre aranceles de patentamiento. {d.descC1Pct > 0 ? `El descuento del ${Math.round(d.descC1Pct*100)}% en cuota 1 es mediante reintegro o descuento directo con Tarjeta de Crédito. ` : ""}Sujeto a peritaje final del usado y aprobación crediticia de Ford Plan Óvalo.
+          * Valores de referencia según valor móvil 01/05/2026. ** Cuotas fijas por contrato de la {d.is100 ? "2 a la 16" : "3 a la 13"}. El beneficio del {Math.round(d.bonifPatentPct*100)}% aplica sobre aranceles de patentamiento. {d.descC1Pct > 0 ? `El descuento del ${Math.round(d.descC1Pct*100)}% en cuota 1 es mediante reintegro o descuento directo con Tarjeta de Crédito. ` : ""}Sujeto a peritaje final del usado y aprobación crediticia de Ford Plan Óvalo.
         </div>
       </div>
     </div>
@@ -390,9 +392,11 @@ export default function App() {
   const [planKey, setPlanKey] = useState("ranger_xl");
   const [retiroName, setRetiroName] = useState("Maverick XLT");
   const [capital, setCapital] = useState("");
-  const [bonifPat, setBonifPat] = useState("1.0");
-  const [descC1, setDescC1] = useState("0.5");
-  const [validez, setValidez] = useState("20/04/26");
+  // Patentamiento: valor libre 0-100 (porcentaje de bonificación)
+  const [bonifPatStr, setBonifPatStr] = useState("50");
+  // Descuento C1: valor libre 0-50 (porcentaje de descuento)
+  const [descC1Str, setDescC1Str] = useState("0");
+  const [validez, setValidez] = useState("20/05/26");
   const [fotoUrl, setFotoUrl] = useState("");
   const [customFoto, setCustomFoto] = useState(false);
   const [logoBase64, setLogoBase64] = useState("");
@@ -415,6 +419,8 @@ export default function App() {
   }, []);
 
   const parseCap = (s) => parseFloat((s || "0").replace(/\./g, "").replace(/,/g, "").replace(/\$/g, "")) || 0;
+  const getBonifPct = () => clamp(parseFloat(bonifPatStr) || 0, 0, 100) / 100;
+  const getDescC1Pct = () => clamp(parseFloat(descC1Str) || 0, 0, 50) / 100;
 
   const updateRetiro = (name) => {
     setRetiroName(name);
@@ -433,7 +439,7 @@ export default function App() {
     if (!clientName.trim()) { setError("Ingresá el nombre del cliente."); return; }
     const cap = parseCap(capital);
     if (!cap) { setError("Ingresá el capital disponible."); return; }
-    const r = calculate(planKey, retiroName, cap, parseFloat(bonifPat), parseFloat(descC1));
+    const r = calculate(planKey, retiroName, cap, getBonifPct(), getDescC1Pct());
     if (!r) { setError("Error en el cálculo. Verificá los datos."); return; }
     if (r.ofertaReal < 0) { setError(`La puja es negativa (${fmt(r.ofertaReal)}). El capital no cubre los gastos.`); return; }
     setResult(r);
@@ -464,130 +470,162 @@ export default function App() {
   const LS = { display: "block", fontSize: 11, fontWeight: 700, color: "#475569", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 };
 
   const cap = parseCap(capital);
-  const liveCalc = cap > 0 ? calculate(planKey, retiroName, cap, parseFloat(bonifPat), parseFloat(descC1)) : null;
+  const liveCalc = cap > 0 ? calculate(planKey, retiroName, cap, getBonifPct(), getDescC1Pct()) : null;
 
   // ============================================================
   // FORM
   // ============================================================
   if (step === "form") {
     return (
-      <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a1628, #152a4a, #0d2137)", padding: "20px 12px" }}>
-        <div style={{ maxWidth: 660, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
-            {logoBase64 ? (
-              <img src={logoBase64} alt="Ford Goldstein" style={{ height: 52, marginBottom: 8, background: "white", padding: "6px 16px", borderRadius: 8 }} />
-            ) : (
-              <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginBottom: 8 }}>Ford | Goldstein</div>
-            )}
-            <h1 style={{ fontSize: 26, fontWeight: 900, color: "white", margin: "4px 0" }}>Simulador Óvalo</h1>
-            <div style={{ fontSize: 12, color: "#6b8db5" }}>Motor de cálculo integrado — Valores Abril 2026</div>
-          </div>
-
-          <div style={{ background: "white", borderRadius: 16, padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
-            <div style={{ marginBottom: 16 }}>
-              <label style={LS}>Nombre del Cliente</label>
-              <input style={IS} placeholder="Ej: Jorgelina" value={clientName} onChange={e => setClientName(e.target.value)} />
+      <>
+        <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a1628, #152a4a, #0d2137)", padding: "20px 12px" }}>
+          <div style={{ maxWidth: 660, margin: "0 auto" }}>
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              {logoBase64 ? (
+                <img src={logoBase64} alt="Ford Goldstein" style={{ height: 52, marginBottom: 8, background: "white", padding: "6px 16px", borderRadius: 8 }} />
+              ) : (
+                <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginBottom: 8 }}>Ford | Goldstein</div>
+              )}
+              <h1 style={{ fontSize: 26, fontWeight: 900, color: "white", margin: "4px 0" }}>Simulador Óvalo</h1>
+              <div style={{ fontSize: 12, color: "#6b8db5" }}>Motor de cálculo integrado — Valores Mayo 2026</div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={LS}>Plan de Suscripción</label>
-                <select style={IS} value={planKey} onChange={e => setPlanKey(e.target.value)}>
-                  {Object.entries(PLANS).map(([k, p]) => <option key={k} value={k}>{p.label}</option>)}
-                </select>
+            <div style={{ background: "white", borderRadius: 16, padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+              <div style={{ marginBottom: 16 }}>
+                <label style={LS}>Nombre del Cliente</label>
+                <input style={IS} placeholder="Ej: Jorgelina" value={clientName} onChange={e => setClientName(e.target.value)} />
               </div>
-              <div>
-                <label style={LS}>Modelo de Retiro</label>
-                <select style={IS} value={retiroName} onChange={e => updateRetiro(e.target.value)}>
-                  {RETIRO_MODELS.map(g => (
-                    <optgroup key={g.group} label={`── ${g.group} ──`}>
-                      {g.models.map(m => <option key={m.name} value={m.name}>{m.name} — {fmt(m.vm)}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-            </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={LS}>Capital Disponible del Cliente ($)</label>
-              <input style={IS} placeholder="20000000" value={capital} onChange={e => setCapital(e.target.value)} />
-              {cap > 0 && <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{fmt(cap)}</div>}
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={LS}>Bonif. Patent.</label>
-                <select style={IS} value={bonifPat} onChange={e => setBonifPat(e.target.value)}>
-                  <option value="0">0%</option>
-                  <option value="0.5">50% Goldstein</option>
-                  <option value="1.0">100% Especial</option>
-                </select>
-              </div>
-              <div>
-                <label style={LS}>Desc. C1 (TC)</label>
-                <select style={IS} value={descC1} onChange={e => setDescC1(e.target.value)}>
-                  <option value="0">Sin desc.</option>
-                  <option value="0.5">50% TC</option>
-                </select>
-              </div>
-              <div>
-                <label style={LS}>Válido hasta</label>
-                <input style={IS} value={validez} onChange={e => setValidez(e.target.value)} />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 20, padding: 14, background: "#f1f5f9", borderRadius: 10 }}>
-              <label style={LS}>Foto Unidad {MODEL_PHOTOS[retiroName] && !customFoto ? "(auto)" : ""}</label>
-              <input type="file" accept="image/*" onChange={e => handleImg(e, setFotoUrl, setCustomFoto)} style={{ fontSize: 11 }} />
-              {fotoUrl && <img src={fotoUrl} alt="" style={{ height: 40, marginTop: 6, objectFit: "contain" }} />}
-            </div>
-
-            {/* Plan 100% info */}
-            {planKey === "ranger_xl_100" && (
-              <div style={{ background: "#eff6ff", border: "2px solid #3b82f6", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#1e40af" }}>
-                📌 <strong>Plan 100% financiado:</strong> Adjudicación asegurada en cuota 5. Sin integración mínima. Sin bono Ford.
-              </div>
-            )}
-
-            {/* Promo Territory */}
-            {planKey === "territory_sel" && (
-              <div style={{ background: "#fef3c7", border: "2px solid #f59e0b", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#92400e" }}>
-                🏷️ <strong>Promo Abril:</strong> 30% de bonificación sobre alícuota de cuota 1 a 13. Cuota fija resultante: $450.000.
-              </div>
-            )}
-
-            {liveCalc && liveCalc.ofertaReal > 0 && (
-              <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 800, color: "#003478", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Vista Rápida</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, textAlign: "center" }}>
-                  {[
-                    ["Puja", fmt(liveCalc.ofertaReal), `${liveCalc.pujaPct.toFixed(1)}% VM`, liveCalc.probColor],
-                    ["Canceladas", `${liveCalc.nAdelanto + liveCalc.regalo}`, "cuotas", "#16a34a"],
-                    ["Restantes", `${liveCalc.cuotasRestantes}`, `de ${liveCalc.plan.cuotas}`, "#003478"],
-                    ["Ahorro", fmt(liveCalc.totalAhorro), "total", "#16a34a"]
-                  ].map(([title, val, sub, color], i) => (
-                    <div key={i}>
-                      <div style={{ fontSize: 9, color: "#64748b", textTransform: "uppercase" }}>{title}</div>
-                      <div style={{ fontWeight: 900, fontSize: 15, color }}>{val}</div>
-                      <div style={{ fontSize: 9, color }}>{sub}</div>
-                    </div>
-                  ))}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                <div>
+                  <label style={LS}>Plan de Suscripción</label>
+                  <select style={IS} value={planKey} onChange={e => setPlanKey(e.target.value)}>
+                    {Object.entries(PLANS).map(([k, p]) => <option key={k} value={k}>{p.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={LS}>Modelo de Retiro</label>
+                  <select style={IS} value={retiroName} onChange={e => updateRetiro(e.target.value)}>
+                    {RETIRO_MODELS.map(g => (
+                      <optgroup key={g.group} label={`── ${g.group} ──`}>
+                        {g.models.map(m => <option key={m.name} value={m.name}>{m.name} — {fmt(m.vm)}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
                 </div>
               </div>
-            )}
 
-            {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13, fontWeight: 600 }}>{error}</div>}
+              <div style={{ marginBottom: 16 }}>
+                <label style={LS}>Capital Disponible del Cliente ($)</label>
+                <input style={IS} placeholder="20000000" value={capital} onChange={e => setCapital(e.target.value)} />
+                {cap > 0 && <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{fmt(cap)}</div>}
+              </div>
 
-            <button onClick={handleCalc} style={{
-              width: "100%", padding: 16, background: "linear-gradient(135deg, #003478, #0056b3)", color: "white",
-              border: "none", borderRadius: 10, fontSize: 16, fontWeight: 900, cursor: "pointer",
-              textTransform: "uppercase", letterSpacing: 2, boxShadow: "0 4px 20px rgba(0,52,120,0.4)"
-            }}>
-              Generar Simulación
-            </button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
+                {/* Bonif. Patentamiento - input libre */}
+                <div>
+                  <label style={LS}>Bonif. Patent. (%)</label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      style={{ ...IS, paddingRight: 30 }}
+                      type="number"
+                      min="0" max="100"
+                      placeholder="50"
+                      value={bonifPatStr}
+                      onChange={e => setBonifPatStr(e.target.value)}
+                      onBlur={e => {
+                        const v = clamp(parseFloat(e.target.value) || 0, 0, 100);
+                        setBonifPatStr(String(v));
+                      }}
+                    />
+                    <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 14, fontWeight: 700, pointerEvents: "none" }}>%</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>
+                    Ahorro: {fmt((allRetiroModels.find(m => m.name === retiroName)?.vm || 0) * 0.07 * (getBonifPct()))}
+                  </div>
+                </div>
+
+                {/* Desc. C1 - input libre */}
+                <div>
+                  <label style={LS}>Desc. C1 (TC) (%)</label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      style={{ ...IS, paddingRight: 30 }}
+                      type="number"
+                      min="0" max="50"
+                      placeholder="0"
+                      value={descC1Str}
+                      onChange={e => setDescC1Str(e.target.value)}
+                      onBlur={e => {
+                        const v = clamp(parseFloat(e.target.value) || 0, 0, 50);
+                        setDescC1Str(String(v));
+                      }}
+                    />
+                    <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 14, fontWeight: 700, pointerEvents: "none" }}>%</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>
+                    {getDescC1Pct() > 0 ? `Desc: ${fmt(PLANS[planKey]?.c1 * getDescC1Pct())}` : "Sin descuento"}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={LS}>Válido hasta</label>
+                  <input style={IS} value={validez} onChange={e => setValidez(e.target.value)} />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 20, padding: 14, background: "#f1f5f9", borderRadius: 10 }}>
+                <label style={LS}>Foto Unidad {MODEL_PHOTOS[retiroName] && !customFoto ? "(auto)" : ""}</label>
+                <input type="file" accept="image/*" onChange={e => handleImg(e, setFotoUrl, setCustomFoto)} style={{ fontSize: 11 }} />
+                {fotoUrl && <img src={fotoUrl} alt="" style={{ height: 40, marginTop: 6, objectFit: "contain" }} />}
+              </div>
+
+              {planKey === "ranger_xl_100" && (
+                <div style={{ background: "#eff6ff", border: "2px solid #3b82f6", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#1e40af" }}>
+                  📌 <strong>Plan 100% financiado:</strong> Adjudicación asegurada en cuota 5. Sin integración mínima. Sin bono Ford.
+                </div>
+              )}
+
+              {planKey === "territory_sel" && (
+                <div style={{ background: "#fef3c7", border: "2px solid #f59e0b", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#92400e" }}>
+                  🏷️ <strong>Promo Mayo:</strong> 30% de bonificación sobre alícuota de cuota 1 a 13. Cuota fija resultante: $450.000.
+                </div>
+              )}
+
+              {liveCalc && liveCalc.ofertaReal > 0 && (
+                <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: "#003478", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Vista Rápida</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, textAlign: "center" }}>
+                    {[
+                      ["Puja", fmt(liveCalc.ofertaReal), `${liveCalc.pujaPct.toFixed(1)}% VM`, liveCalc.probColor],
+                      ["Canceladas", `${liveCalc.nAdelanto + liveCalc.regalo}`, "cuotas", "#16a34a"],
+                      ["Restantes", `${liveCalc.cuotasRestantes}`, `de ${liveCalc.plan.cuotas}`, "#003478"],
+                      ["Ahorro", fmt(liveCalc.totalAhorro), "total", "#16a34a"]
+                    ].map(([title, val, sub, color], i) => (
+                      <div key={i}>
+                        <div style={{ fontSize: 9, color: "#64748b", textTransform: "uppercase" }}>{title}</div>
+                        <div style={{ fontWeight: 900, fontSize: 15, color }}>{val}</div>
+                        <div style={{ fontSize: 9, color }}>{sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13, fontWeight: 600 }}>{error}</div>}
+
+              <button onClick={handleCalc} style={{
+                width: "100%", padding: 16, background: "linear-gradient(135deg, #003478, #0056b3)", color: "white",
+                border: "none", borderRadius: 10, fontSize: 16, fontWeight: 900, cursor: "pointer",
+                textTransform: "uppercase", letterSpacing: 2, boxShadow: "0 4px 20px rgba(0,52,120,0.4)"
+              }}>
+                Generar Simulación
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+        <Analytics />
+      </>
     );
   }
 
@@ -595,22 +633,25 @@ export default function App() {
   // PREVIEW
   // ============================================================
   return (
-    <div style={{ minHeight: "100vh", background: "#e2e8f0", padding: 16 }}>
-      <style>{`@media print { .no-print { display: none !important; } }`}</style>
-      <div className="no-print" style={{ maxWidth: 820, margin: "0 auto 12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-        <button onClick={() => setStep("form")} style={{ padding: "10px 20px", background: "white", border: "2px solid #cbd5e1", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#333" }}>
-          ← Volver
-        </button>
-        <button onClick={handleExportPDF} disabled={exporting} style={{
-          padding: "10px 28px", background: exporting ? "#6b7280" : "#003478", color: "white", border: "none",
-          borderRadius: 8, cursor: exporting ? "wait" : "pointer", fontWeight: 900, fontSize: 14, boxShadow: "0 2px 10px rgba(0,52,120,0.3)"
-        }}>
-          {exporting ? "Generando PDF..." : "Descargar PDF"}
-        </button>
+    <>
+      <div style={{ minHeight: "100vh", background: "#e2e8f0", padding: 16 }}>
+        <style>{`@media print { .no-print { display: none !important; } }`}</style>
+        <div className="no-print" style={{ maxWidth: 820, margin: "0 auto 12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          <button onClick={() => setStep("form")} style={{ padding: "10px 20px", background: "white", border: "2px solid #cbd5e1", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#333" }}>
+            ← Volver
+          </button>
+          <button onClick={handleExportPDF} disabled={exporting} style={{
+            padding: "10px 28px", background: exporting ? "#6b7280" : "#003478", color: "white", border: "none",
+            borderRadius: 8, cursor: exporting ? "wait" : "pointer", fontWeight: 900, fontSize: 14, boxShadow: "0 2px 10px rgba(0,52,120,0.3)"
+          }}>
+            {exporting ? "Generando PDF..." : "Descargar PDF"}
+          </button>
+        </div>
+        <div ref={printRef} style={{ maxWidth: 820, margin: "0 auto", background: "white", borderRadius: 6, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", overflow: "hidden" }}>
+          <DocPreview data={result} clientName={clientName} validez={validez} logoBase64={logoBase64} fotoUrl={fotoUrl} />
+        </div>
       </div>
-      <div ref={printRef} style={{ maxWidth: 820, margin: "0 auto", background: "white", borderRadius: 6, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", overflow: "hidden" }}>
-        <DocPreview data={result} clientName={clientName} validez={validez} logoBase64={logoBase64} fotoUrl={fotoUrl} />
-      </div>
-    </div>
+      <Analytics />
+    </>
   );
 }
