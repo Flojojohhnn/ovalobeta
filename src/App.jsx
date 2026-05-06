@@ -108,9 +108,9 @@ function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct) {
   if (!plan || !retiro) return null;
 
   const vmPlan = plan.vm, vmRetiro = retiro.vm;
-  const gastosGestion = 1500000, patPct = 0.07;
+  const gastosGestion = 1500000;
   const diffModelo = vmRetiro > vmPlan ? vmRetiro - vmPlan : 0;
-  const patBruto = vmRetiro * patPct;
+  const patBruto = vmRetiro * 0.07;
   const patNeto = patBruto * (1 - bonifPatentPct);
   const ofertaReal = capital - (diffModelo + gastosGestion + patNeto);
   const is100 = plan.ratio === "100%";
@@ -147,301 +147,333 @@ function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct) {
 }
 
 // ============================================================
-// DOCUMENTO — layout compatible con html2pdf
-// Reglas clave para PDF:
-//   - Ancho total fijo 780px en el wrapper externo
-//   - Sin min-height en bloques de color — solo padding
-//   - Sin display:grid — usar display:flex o tabla HTML
-//   - Sin background-image ni gradientes complejos
-//   - Imágenes siempre en cajas de tamaño fijo con objectFit
-//   - Sin mixBlendMode ni filtros CSS
+// DOCUMENTO — fiel al boceto
+// Layout:
+//   HEADER azul: logo izq | fecha der — nombre cliente — 3 KPIs en fila completa
+//   FILA 1: Plan vehículo (con foto centrada) | Licitación
+//   FILA 2: Cuotas | Beneficios
+//   FOOTER legal
+//
+// Reglas PDF:
+//   - Tablas HTML en lugar de CSS grid/flex complejos
+//   - Ancho fijo 794px (A4 en 96dpi menos márgenes)
+//   - Sin min-height en bloques de color
+//   - Imágenes en cajas fijas con width/height explícitos
+//   - Sin mixBlendMode ni gradientes complejos
 // ============================================================
 function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
   if (!data) return null;
   const d = data, p = d.plan;
+
   const NAVY = "#001f5b";
   const BORDER = "#e5e7eb";
   const GRAY = "#6b7280";
-
-  // Fila de datos reutilizable
-  const Row = ({ label, value, lc, vc }) => (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: `0.5px solid ${BORDER}` }}>
-      <span style={{ fontSize: 11, color: lc || GRAY }}>{label}</span>
-      <span style={{ fontSize: 12, fontWeight: 700, color: vc || "#0a0a0a" }}>{value}</span>
-    </div>
-  );
+  const W = 794; // ancho total fijo
 
   // Título de sección
-  const STitle = ({ children }) => (
+  const ST = ({ children }) => (
     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
       <div style={{ width: 14, height: 2, background: NAVY, flexShrink: 0 }} />
       <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: NAVY }}>{children}</span>
     </div>
   );
 
-  // Bloque azul reutilizable
-  const NavyBox = ({ label, mainValue, sub, subColor }) => (
-    <div style={{ background: NAVY, borderRadius: 6, padding: "10px 14px", marginTop: 10 }}>
-      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", marginTop: 3 }}>{mainValue}</div>
-      {sub && <div style={{ fontSize: 10, color: subColor || "rgba(255,255,255,0.6)", marginTop: 3, fontWeight: 600 }}>{sub}</div>}
+  // Fila de datos
+  const DR = ({ label, value, lc, vc, last }) => (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", borderBottom: last ? "none" : `0.5px solid ${BORDER}` }}>
+      <span style={{ fontSize: 11, color: lc || GRAY }}>{label}</span>
+      <span style={{ fontSize: 12, fontWeight: 700, color: vc || "#0a0a0a" }}>{value}</span>
     </div>
   );
 
   const intLabel = d.is100 ? "Integración cuota 5" : `Integración mínima (${Math.round(p.intMinPct * 100)}%)`;
   const intValue = d.is100 ? fmt(p.intCuota5) : fmt(p.intMin);
-  const probSub = `${d.pujaPct.toFixed(2)}% del VM · Probabilidad ${d.prob}`;
 
   return (
-    // Wrapper de ancho fijo — crítico para que html2pdf no reinterprete el layout
-    <div style={{ width: 780, fontFamily: "'Segoe UI', Arial, sans-serif", background: "#fff", fontSize: 12 }}>
+    <div style={{ width: W, fontFamily: "'Segoe UI', Arial, sans-serif", background: "#ffffff", overflow: "hidden" }}>
 
-      {/* ══════ HEADER AZUL ══════ */}
-      <div style={{ background: NAVY, padding: "20px 24px 0 24px", width: "100%", boxSizing: "border-box" }}>
+      {/* ══════ HEADER AZUL (fiel al boceto) ══════
+          Logo izq | Fecha der
+          Nombre grande
+          Subtítulo plan
+          3 KPIs en fila completa (sin foto en header)
+      ══════════════════════════════════════════════ */}
+      <div style={{ background: NAVY, width: W, boxSizing: "border-box", padding: "20px 24px 18px 24px" }}>
 
-        {/* Fila superior: logo | fecha */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-          <div>
-            {logoBase64
-              ? <img src={logoBase64} alt="Ford Goldstein" style={{ height: 34, width: "auto", background: "#fff", padding: "3px 10px", borderRadius: 5, display: "block" }} />
-              : <span style={{ fontWeight: 800, fontSize: 16, color: "#fff" }}>Ford | Goldstein</span>
-            }
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>Válido hasta</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", marginTop: 2 }}>{validez}</div>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>Mayo 2026</div>
-          </div>
-        </div>
+        {/* Fila: logo + fecha */}
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <tbody><tr>
+            <td style={{ verticalAlign: "middle" }}>
+              {logoBase64
+                ? <img src={logoBase64} alt="Ford Goldstein"
+                    style={{ height: 30, width: "auto", display: "block", background: "#fff", padding: "3px 10px", borderRadius: 5 }} />
+                : <span style={{ fontWeight: 800, fontSize: 15, color: "#fff" }}>Ford | Goldstein</span>
+              }
+            </td>
+            <td style={{ verticalAlign: "top", textAlign: "right" }}>
+              <div style={{ display: "inline-block", background: "rgba(255,255,255,0.1)", border: "0.5px solid rgba(255,255,255,0.2)", borderRadius: 6, padding: "6px 14px", textAlign: "right" }}>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em" }}>Válido hasta</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginTop: 2 }}>{validez}</div>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>Ford Goldstein · Mayo 2026</div>
+              </div>
+            </td>
+          </tr></tbody>
+        </table>
 
-        {/* Fila principal: info cliente | foto auto */}
-        <div style={{ display: "flex", alignItems: "flex-end" }}>
-
-          {/* Info cliente + KPIs */}
-          <div style={{ flex: 1, paddingRight: 16 }}>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Propuesta personalizada</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1.05 }}>{clientName.toUpperCase()}</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 4, marginBottom: 14 }}>
-              {p.name} · Plan {p.ratio} · {p.cuotas} cuotas · Retiro: {d.retiroName}
-            </div>
-
-            {/* KPI cards — tabla para PDF */}
-            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 6 }}>
-              <tbody><tr>
-                {[
-                  { label: "Puja competitiva", value: fmt(d.ofertaReal), sub: `${d.pujaPct.toFixed(1)}% VM · ${d.prob}`, sc: d.probColor },
-                  { label: "Cuotas canceladas", value: `${d.nAdelanto + d.regalo}`, sub: `de ${p.cuotas} del plan`, sc: "rgba(255,255,255,0.4)" },
-                  { label: "Saldo restante", value: `${d.cuotasRestantes} cuotas`, sub: `Ahorro ${fmt(d.totalAhorro)}`, sc: "rgba(255,255,255,0.4)" }
-                ].map((kpi, i) => (
-                  <td key={i} style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.12)", borderRadius: 7, padding: "9px 12px", verticalAlign: "top", width: "33%" }}>
-                    <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{kpi.label}</div>
-                    <div style={{ fontSize: 17, fontWeight: 800, color: "#fff", marginTop: 4, letterSpacing: "-0.01em" }}>{kpi.value}</div>
-                    <div style={{ fontSize: 10, color: kpi.sc, marginTop: 3, fontWeight: 600 }}>{kpi.sub}</div>
-                  </td>
-                ))}
-              </tr></tbody>
-            </table>
-          </div>
-
-          {/* FOTO AUTO — caja fija, siempre el mismo espacio */}
-          <div style={{
-            width: 210, height: 170, flexShrink: 0,
-            background: NAVY,
-            display: "flex", alignItems: "flex-end", justifyContent: "center",
-            overflow: "hidden"
-          }}>
-            {fotoUrl
-              ? <img
-                  src={fotoUrl}
-                  alt={d.retiroName}
-                  style={{
-                    width: 210, height: 160,
-                    objectFit: "contain",
-                    objectPosition: "bottom center",
-                    display: "block"
-                  }}
-                />
-              : <div style={{ width: 210, height: 160, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)" }}>Sin imagen</span>
-                </div>
-            }
+        {/* Nombre cliente */}
+        <div style={{ marginTop: 14 }}>
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em" }}>Propuesta personalizada</div>
+          <div style={{ fontSize: 30, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1.05, marginTop: 2 }}>{clientName.toUpperCase()}</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 3 }}>
+            {p.name} · Plan {p.ratio} · {p.cuotas} cuotas · Retiro: {d.retiroName}
           </div>
         </div>
+
+        {/* 3 KPIs en fila completa — igual al boceto */}
+        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 8, marginTop: 14 }}>
+          <tbody><tr>
+            {[
+              { label: "Puja competitiva", value: fmt(d.ofertaReal), sub: `${d.pujaPct.toFixed(1)}% VM · ${d.prob}`, sc: d.probColor },
+              { label: "Cuotas canceladas", value: String(d.nAdelanto + d.regalo), sub: `de ${p.cuotas} totales del plan`, sc: "rgba(255,255,255,0.4)" },
+              { label: "Saldo restante", value: `${d.cuotasRestantes} cuotas`, sub: `Ahorro total ${fmt(d.totalAhorro)}`, sc: "rgba(255,255,255,0.4)" }
+            ].map((k, i) => (
+              <td key={i} style={{
+                width: "33.33%", background: "rgba(255,255,255,0.07)",
+                border: "0.5px solid rgba(255,255,255,0.12)", borderRadius: 7,
+                padding: "10px 14px", verticalAlign: "top"
+              }}>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>{k.label}</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", marginTop: 5 }}>{k.value}</div>
+                <div style={{ fontSize: 10, color: k.sc, marginTop: 4, fontWeight: 600 }}>{k.sub}</div>
+              </td>
+            ))}
+          </tr></tbody>
+        </table>
       </div>
 
-      {/* ══════ BODY — dos columnas con tabla HTML ══════ */}
-      <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-        <colgroup>
-          <col style={{ width: "50%" }} />
-          <col style={{ width: "50%" }} />
-        </colgroup>
-        <tbody>
-          <tr style={{ verticalAlign: "top" }}>
+      {/* ══════ BODY: FILA 1 — Plan vehículo | Licitación ══════ */}
+      <table style={{ width: W, borderCollapse: "collapse", tableLayout: "fixed" }}>
+        <colgroup><col style={{ width: "50%" }} /><col style={{ width: "50%" }} /></colgroup>
+        <tbody><tr style={{ verticalAlign: "top" }}>
 
-            {/* ── COL IZQUIERDA ── */}
-            <td style={{ padding: "16px 20px", borderRight: `0.5px solid ${BORDER}`, borderBottom: `0.5px solid ${BORDER}`, verticalAlign: "top" }}>
+          {/* COL IZQ — Plan del vehículo + foto centrada */}
+          <td style={{ padding: "18px 20px", borderRight: `0.5px solid ${BORDER}`, borderBottom: `0.5px solid ${BORDER}`, verticalAlign: "top" }}>
+            <ST>Plan del vehículo</ST>
+            <DR label={`VM ${p.name}`} value={fmt(d.vmPlan)} />
+            <DR label={`VM Retiro (${d.retiroName})`} value={fmt(d.vmRetiro)} />
+            <DR label={intLabel} value={intValue} />
+            <DR label={`Saldo a financiar (${Math.round((1 - p.intMinPct) * 100)}%)`}
+              value={fmt(d.is100 ? d.vmPlan : d.vmPlan * (1 - p.intMinPct))}
+              lc="#9ca3af" vc="#9ca3af" last />
 
-              {/* Plan del vehículo */}
-              <STitle>Plan del vehículo</STitle>
-              <Row label={`VM ${p.name}`} value={fmt(d.vmPlan)} />
-              <Row label={`VM Retiro (${d.retiroName})`} value={fmt(d.vmRetiro)} />
-              <Row label={intLabel} value={intValue} />
-              <Row label={`Saldo a financiar (${Math.round((1 - p.intMinPct) * 100)}%)`} value={fmt(d.is100 ? d.vmPlan : d.vmPlan * (1 - p.intMinPct))} lc="#9ca3af" vc="#9ca3af" />
-
-              <div style={{ height: 16 }} />
-
-              {/* Licitación */}
-              <STitle>Licitación y adjudicación</STitle>
-              <Row label="Capital disponible" value={fmt(d.capital)} />
-              <Row label="— Gastos de gestión" value={fmt(d.gastosGestion)} lc="#dc2626" vc="#dc2626" />
-              <Row label="— Diferencia de modelo" value={d.diffModelo > 0 ? fmt(d.diffModelo) : "$0"} lc="#dc2626" vc="#dc2626" />
-              <Row
-                label={`— Patentamiento (${Math.round(d.bonifPatentPct * 100)}% bonif.)`}
-                value={d.patNeto === 0 ? "$0" : fmt(d.patNeto)}
-                lc={d.patNeto === 0 ? "#16a34a" : "#dc2626"}
-                vc={d.patNeto === 0 ? "#16a34a" : "#dc2626"}
-              />
-
-              <NavyBox label="Oferta de licitación neta (Puja)" mainValue={fmt(d.ofertaReal)} sub={probSub} subColor={d.prob === "ALTA" ? "#4ade80" : d.prob === "MEDIA-ALTA" ? "#fbbf24" : "#f87171"} />
-
-              <div style={{ background: "#f8fafc", border: `0.5px solid ${BORDER}`, borderRadius: 6, padding: "10px 12px", marginTop: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
-                  <span style={{ fontSize: 11, color: GRAY }}>Reducción de plazo</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#0a0a0a" }}>{d.nAdelanto + d.regalo} cuotas canceladas</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", borderTop: `0.5px solid ${BORDER}`, paddingTop: 7, marginTop: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: NAVY }}>Saldo restante estimado</span>
-                  <span style={{ fontSize: 16, fontWeight: 800, color: NAVY }}>{d.cuotasRestantes} cuotas</span>
-                </div>
-              </div>
-            </td>
-
-            {/* ── COL DERECHA ── */}
-            <td style={{ padding: "16px 20px", borderBottom: `0.5px solid ${BORDER}`, verticalAlign: "top" }}>
-
-              {/* Cuotas */}
-              <STitle>Proyección de cuotas</STitle>
-
-              {/* C1 */}
-              <div style={{ background: "#f0fdf4", border: "0.5px solid #bbf7d0", borderRadius: 7, padding: "9px 11px", marginBottom: 7 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#15803d" }}>Cuota 1 · Suscripción</span>
-                  <span style={{ fontSize: 17, fontWeight: 800, color: "#15803d" }}>{fmt(d.c1Display)}</span>
-                </div>
-                {d.descC1Pct > 0 && (
-                  <div style={{ fontSize: 10, color: "#16a34a", marginTop: 3 }}>
-                    {Math.round(d.descC1Pct * 100)}% de descuento con Tarjeta de Crédito
+            {/* Caja de imagen — centrada, tamaño fijo, imagen no se deforma */}
+            <div style={{
+              margin: "14px 0 4px 0",
+              width: "100%",
+              height: 160,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#f8fafc",
+              borderRadius: 8,
+              border: `0.5px solid ${BORDER}`,
+              overflow: "hidden"
+            }}>
+              {fotoUrl
+                ? <img src={fotoUrl} alt={d.retiroName}
+                    style={{ maxWidth: "100%", maxHeight: "100%", width: "auto", height: "auto", objectFit: "contain", display: "block" }} />
+                : <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 10, color: "#9ca3af" }}>Sin imagen</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: NAVY, marginTop: 4 }}>{d.retiroName}</div>
                   </div>
+              }
+            </div>
+          </td>
+
+          {/* COL DER — Licitación */}
+          <td style={{ padding: "18px 20px", borderBottom: `0.5px solid ${BORDER}`, verticalAlign: "top" }}>
+            <ST>Licitación</ST>
+            <DR label="Capital disponible" value={fmt(d.capital)} />
+            <DR label="— Gastos de gestión" value={fmt(d.gastosGestion)} lc="#dc2626" vc="#dc2626" />
+            <DR label="— Diferencia de modelo" value={d.diffModelo > 0 ? fmt(d.diffModelo) : "$0"} lc="#dc2626" vc="#dc2626" />
+            <DR
+              label={`— Patentamiento (${Math.round(d.bonifPatentPct * 100)}% bonif.)`}
+              value={d.patNeto === 0 ? "$0" : fmt(d.patNeto)}
+              lc={d.patNeto === 0 ? "#16a34a" : "#dc2626"}
+              vc={d.patNeto === 0 ? "#16a34a" : "#dc2626"}
+              last
+            />
+
+            {/* Bloque puja */}
+            <div style={{ background: NAVY, borderRadius: 7, padding: "12px 14px", marginTop: 12 }}>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Puja competitiva</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", marginTop: 4 }}>{fmt(d.ofertaReal)}</div>
+              <div style={{ fontSize: 11, color: d.prob === "ALTA" ? "#4ade80" : d.prob === "MEDIA-ALTA" ? "#fbbf24" : "#f87171", marginTop: 4, fontWeight: 600 }}>
+                {d.pujaPct.toFixed(2)}% del VM · Probabilidad {d.prob}
+              </div>
+            </div>
+
+            {/* Resultado plazo */}
+            <div style={{ background: "#f8fafc", border: `0.5px solid ${BORDER}`, borderRadius: 7, padding: "10px 12px", marginTop: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 0" }}>
+                <span style={{ fontSize: 11, color: GRAY }}>Reducción de plazo</span>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>{d.nAdelanto + d.regalo} cuotas canceladas</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: `0.5px solid ${BORDER}`, marginTop: 7, paddingTop: 7 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: NAVY }}>Saldo restante estimado</span>
+                <span style={{ fontSize: 18, fontWeight: 800, color: NAVY }}>{d.cuotasRestantes} cuotas</span>
+              </div>
+            </div>
+          </td>
+        </tr></tbody>
+      </table>
+
+      {/* ══════ BODY: FILA 2 — Cuotas | Beneficios ══════ */}
+      <table style={{ width: W, borderCollapse: "collapse", tableLayout: "fixed" }}>
+        <colgroup><col style={{ width: "50%" }} /><col style={{ width: "50%" }} /></colgroup>
+        <tbody><tr style={{ verticalAlign: "top" }}>
+
+          {/* COL IZQ — Cuotas */}
+          <td style={{ padding: "18px 20px", borderRight: `0.5px solid ${BORDER}`, verticalAlign: "top" }}>
+            <ST>Cuotas</ST>
+
+            {/* C1 */}
+            <div style={{ background: "#f0fdf4", border: "0.5px solid #bbf7d0", borderRadius: 7, padding: "9px 11px", marginBottom: 7 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#15803d" }}>Cuota 1 (Suscripción)</span>
+                <span style={{ fontSize: 18, fontWeight: 800, color: "#15803d" }}>{fmt(d.c1Display)}</span>
+              </div>
+              {d.descC1Pct > 0 && (
+                <div style={{ fontSize: 10, color: "#16a34a", marginTop: 3 }}>
+                  {Math.round(d.descC1Pct * 100)}% de descuento con Tarjeta de Crédito
+                </div>
+              )}
+            </div>
+
+            {/* C2 */}
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 4px", borderBottom: `0.5px solid ${BORDER}` }}>
+              <span style={{ fontSize: 11, color: GRAY }}>{d.is100 ? "Cuota 2 a 5" : "Cuota 2 (licitación)"}</span>
+              <span style={{ fontSize: 12, fontWeight: 600 }}>{fmt(p.schedule.c2_13)}</span>
+            </div>
+
+            {/* Cuotas fijas */}
+            <div style={{ background: "#fffbeb", border: "0.5px solid #fde68a", borderRadius: 7, padding: "9px 11px", margin: "7px 0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e" }}>
+                    {d.is100 ? "Cuotas 6 a 16 · Fijas" : "Cuotas 3 a 13 · Fijas"}
+                  </div>
+                  <div style={{ fontSize: 10, color: "#b45309", marginTop: 2 }}>12 cuotas garantizadas sin variación</div>
+                </div>
+                <span style={{ fontSize: 18, fontWeight: 800, color: "#92400e" }}>
+                  {fmt(d.is100 ? p.schedule.c14_16 : p.schedule.c2_13)}
+                </span>
+              </div>
+            </div>
+
+            {!d.is100 && (
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 4px", borderBottom: `0.5px solid ${BORDER}` }}>
+                <span style={{ fontSize: 11, color: GRAY }}>Cuota 14 a 16</span>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>{fmt(p.schedule.c14_16)}</span>
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 4px", borderBottom: `0.5px solid ${BORDER}` }}>
+              <span style={{ fontSize: 11, color: GRAY }}>Cuota 17 al final</span>
+              <span style={{ fontSize: 11, color: "#9ca3af" }}>Decreciente</span>
+            </div>
+
+            {/* Alícuota */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderTop: `0.5px solid ${BORDER}`, marginTop: 4 }}>
+              <span style={{ fontSize: 10, color: "#9ca3af", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>Alícuota pura</span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: NAVY }}>{fmt(p.ap)}</span>
+            </div>
+
+            {p.promo && (
+              <div style={{ background: "#fef3c7", border: "0.5px solid #fde68a", borderRadius: 6, padding: "7px 10px", marginTop: 6 }}>
+                <span style={{ fontSize: 10, color: "#92400e", fontWeight: 600 }}>Promo Mayo: {p.promo}</span>
+              </div>
+            )}
+            {d.is100 && (
+              <div style={{ background: "#eff6ff", border: "0.5px solid #bfdbfe", borderRadius: 6, padding: "7px 10px", marginTop: 6 }}>
+                <span style={{ fontSize: 10, color: "#1d4ed8", fontWeight: 600 }}>Plan 100%: adjudicación garantizada cuota 5 · Integración: {fmt(p.intCuota5)}</span>
+              </div>
+            )}
+          </td>
+
+          {/* COL DER — Beneficios */}
+          <td style={{ padding: "18px 20px", verticalAlign: "top" }}>
+            <ST>Beneficios</ST>
+
+            {/* Badges patentamiento + desc C1 */}
+            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 7, marginBottom: 12 }}>
+              <tbody><tr>
+                <td style={{ border: `0.5px solid ${BORDER}`, borderRadius: 7, padding: "10px 8px", textAlign: "center", width: "50%", verticalAlign: "top" }}>
+                  <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Patentamiento</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: NAVY, marginTop: 4, lineHeight: 1 }}>{Math.round(d.bonifPatentPct * 100)}%</div>
+                  <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>bonificado</div>
+                </td>
+                {d.descC1Pct > 0 ? (
+                  <td style={{ border: `0.5px solid ${BORDER}`, borderRadius: 7, padding: "10px 8px", textAlign: "center", width: "50%", verticalAlign: "top" }}>
+                    <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Desc. cuota 1</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: NAVY, marginTop: 4, lineHeight: 1 }}>{Math.round(d.descC1Pct * 100)}%</div>
+                    <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>con TC</div>
+                  </td>
+                ) : d.bono > 0 ? (
+                  <td style={{ border: `0.5px solid ${BORDER}`, borderRadius: 7, padding: "10px 8px", textAlign: "center", width: "50%", verticalAlign: "top" }}>
+                    <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Bono Ford</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: NAVY, marginTop: 4 }}>{fmt(d.bono)}</div>
+                    <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>en facturación</div>
+                  </td>
+                ) : (
+                  <td style={{ border: `0.5px solid ${BORDER}`, borderRadius: 7, padding: "10px 8px", textAlign: "center", width: "50%", verticalAlign: "top" }}>
+                    <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Regalos</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, color: NAVY, marginTop: 4 }}>{d.regalo}</div>
+                    <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>alícuota{d.regalo !== 1 ? "s" : ""}</div>
+                  </td>
+                )}
+              </tr></tbody>
+            </table>
+
+            {/* Ahorro total */}
+            <div style={{ background: NAVY, borderRadius: 7, padding: "14px 16px", marginBottom: 14 }}>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Ahorro total directo</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", marginTop: 5 }}>{fmt(d.totalAhorro)}</div>
+              <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <span style={{ background: "rgba(255,255,255,0.12)", border: "0.5px solid rgba(255,255,255,0.2)", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "rgba(255,255,255,0.8)" }}>
+                  Patent: {fmt(d.ahorroPatent)}
+                </span>
+                {d.descC1Pct > 0 && (
+                  <span style={{ background: "rgba(255,255,255,0.12)", border: "0.5px solid rgba(255,255,255,0.2)", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "rgba(255,255,255,0.8)" }}>
+                    C1: {fmt(d.descC1Monto)}
+                  </span>
+                )}
+                {d.bono > 0 && (
+                  <span style={{ background: "rgba(255,255,255,0.12)", border: "0.5px solid rgba(255,255,255,0.2)", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "rgba(255,255,255,0.8)" }}>
+                    Bono: {fmt(d.bono)}
+                  </span>
                 )}
               </div>
+            </div>
 
-              <Row label={d.is100 ? "Cuota 2 a 5" : "Cuota 2 · Licitación"} value={fmt(p.schedule.c2_13)} />
-
-              {/* Cuotas fijas */}
-              <div style={{ background: "#fffbeb", border: "0.5px solid #fde68a", borderRadius: 7, padding: "9px 11px", margin: "7px 0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#92400e" }}>{d.is100 ? "Cuota 6 a 16 · Fijas" : "Cuota 3 a 13 · Fijas"}</div>
-                    <div style={{ fontSize: 10, color: "#b45309", marginTop: 2 }}>12 cuotas garantizadas sin variación</div>
-                  </div>
-                  <span style={{ fontSize: 17, fontWeight: 800, color: "#92400e" }}>{fmt(d.is100 ? p.schedule.c14_16 : p.schedule.c2_13)}</span>
-                </div>
-              </div>
-
-              {!d.is100 && <Row label="Cuota 14 a 16" value={fmt(p.schedule.c14_16)} />}
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: `0.5px solid ${BORDER}` }}>
-                <span style={{ fontSize: 11, color: GRAY }}>Cuota 17 al final</span>
-                <span style={{ fontSize: 11, color: "#9ca3af" }}>Esquema decreciente</span>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", borderTop: `0.5px solid ${BORDER}`, marginTop: 8, paddingTop: 8 }}>
-                <span style={{ fontSize: 10, color: "#9ca3af", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Alícuota pura</span>
-                <span style={{ fontSize: 14, fontWeight: 800, color: NAVY }}>{fmt(p.ap)}</span>
-              </div>
-
-              {p.promo && (
-                <div style={{ background: "#fef3c7", border: "0.5px solid #fde68a", borderRadius: 6, padding: "6px 10px", marginTop: 8 }}>
-                  <span style={{ fontSize: 10, color: "#92400e", fontWeight: 600 }}>Promo Mayo: {p.promo}</span>
-                </div>
-              )}
-              {d.is100 && (
-                <div style={{ background: "#eff6ff", border: "0.5px solid #bfdbfe", borderRadius: 6, padding: "6px 10px", marginTop: 8 }}>
-                  <span style={{ fontSize: 10, color: "#1d4ed8", fontWeight: 600 }}>Plan 100%: adjudicación garantizada cuota 5 · Integración: {fmt(p.intCuota5)}</span>
-                </div>
-              )}
-
-              <div style={{ height: 14 }} />
-
-              {/* Beneficios */}
-              <STitle>Beneficios exclusivos Goldstein</STitle>
-
-              {/* Badges */}
-              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 6, marginBottom: 10 }}>
-                <tbody><tr>
-                  <td style={{ border: `0.5px solid ${BORDER}`, borderRadius: 7, padding: "9px 10px", textAlign: "center", width: "50%" }}>
-                    <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Patentamiento</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: NAVY, marginTop: 4 }}>{Math.round(d.bonifPatentPct * 100)}%</div>
-                    <div style={{ fontSize: 10, color: GRAY }}>bonificado</div>
-                  </td>
-                  {d.descC1Pct > 0 ? (
-                    <td style={{ border: `0.5px solid ${BORDER}`, borderRadius: 7, padding: "9px 10px", textAlign: "center", width: "50%" }}>
-                      <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Desc. cuota 1</div>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: NAVY, marginTop: 4 }}>{Math.round(d.descC1Pct * 100)}%</div>
-                      <div style={{ fontSize: 10, color: GRAY }}>con TC</div>
-                    </td>
-                  ) : d.bono > 0 ? (
-                    <td style={{ border: `0.5px solid ${BORDER}`, borderRadius: 7, padding: "9px 10px", textAlign: "center", width: "50%" }}>
-                      <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Bono Ford</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: NAVY, marginTop: 4 }}>{fmt(d.bono)}</div>
-                      <div style={{ fontSize: 10, color: GRAY }}>en facturación</div>
-                    </td>
-                  ) : (
-                    <td style={{ border: `0.5px solid ${BORDER}`, borderRadius: 7, padding: "9px 10px", textAlign: "center", width: "50%" }}>
-                      <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Regalos</div>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: NAVY, marginTop: 4 }}>{d.regalo}</div>
-                      <div style={{ fontSize: 10, color: GRAY }}>alícuota{d.regalo > 1 ? "s" : ""}</div>
-                    </td>
-                  )}
-                </tr></tbody>
-              </table>
-
-              {/* Ahorro total */}
-              <div style={{ background: NAVY, borderRadius: 7, padding: "12px 14px", marginBottom: 12 }}>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em" }}>Ahorro total directo</div>
-                <div style={{ fontSize: 24, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", marginTop: 4 }}>{fmt(d.totalAhorro)}</div>
-                <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  <span style={{ background: "rgba(255,255,255,0.12)", border: "0.5px solid rgba(255,255,255,0.18)", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "rgba(255,255,255,0.75)" }}>
-                    Patent: {fmt(d.ahorroPatent)}
-                  </span>
-                  {d.descC1Pct > 0 && (
-                    <span style={{ background: "rgba(255,255,255,0.12)", border: "0.5px solid rgba(255,255,255,0.18)", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "rgba(255,255,255,0.75)" }}>
-                      C1: {fmt(d.descC1Monto)}
-                    </span>
-                  )}
-                  {d.bono > 0 && (
-                    <span style={{ background: "rgba(255,255,255,0.12)", border: "0.5px solid rgba(255,255,255,0.18)", borderRadius: 4, padding: "2px 8px", fontSize: 10, color: "rgba(255,255,255,0.75)" }}>
-                      Bono: {fmt(d.bono)}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Proyección cancelación */}
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#9ca3af", marginBottom: 7 }}>
-                Si abonás de más mensualmente:
-              </div>
-              <Row label={`${fmt(d.proj1Monthly)}/mes`} value={`Cancela en ${d.proj1Months} meses`} vc="#15803d" />
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0" }}>
-                <span style={{ fontSize: 11, color: GRAY }}>{fmt(d.proj2Monthly)}/mes</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#15803d" }}>Cancela en {d.proj2Months} meses</span>
-              </div>
-            </td>
-          </tr>
-        </tbody>
+            {/* Proyección cancelación */}
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#9ca3af", marginBottom: 8 }}>
+              Si pagás de más mensual:
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: `0.5px solid ${BORDER}` }}>
+              <span style={{ fontSize: 11, color: GRAY }}>{fmt(d.proj1Monthly)}/mes</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#15803d" }}>cancela en {d.proj1Months} meses</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0" }}>
+              <span style={{ fontSize: 11, color: GRAY }}>{fmt(d.proj2Monthly)}/mes</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#15803d" }}>cancela en {d.proj2Months} meses</span>
+            </div>
+          </td>
+        </tr></tbody>
       </table>
 
       {/* ══════ FOOTER LEGAL ══════ */}
-      <div style={{ padding: "9px 22px", background: "#f8fafc", borderTop: `0.5px solid ${BORDER}` }}>
+      <div style={{ background: "#f8fafc", borderTop: `0.5px solid ${BORDER}`, padding: "9px 22px", width: W, boxSizing: "border-box" }}>
         <p style={{ fontSize: 8, color: "#9ca3af", lineHeight: 1.6, margin: 0 }}>
           * Valores de referencia según valor móvil 01/05/2026. Cuotas fijas por contrato de la {d.is100 ? "2 a la 16" : "3 a la 13"}.
           El beneficio del {Math.round(d.bonifPatentPct * 100)}% aplica sobre aranceles de patentamiento.
@@ -481,20 +513,18 @@ export default function App() {
     const file = e.target.files?.[0];
     if (!file) return;
     const r = new FileReader();
-    r.onload = (ev) => { setter(ev.target.result); if (setCustom) setCustom(true); };
+    r.onload = ev => { setter(ev.target.result); if (setCustom) setCustom(true); };
     r.readAsDataURL(file);
   }, []);
 
-  const parseCap = (s) => parseFloat((s || "0").replace(/\./g, "").replace(/,/g, "").replace(/\$/g, "")) || 0;
+  const parseCap = s => parseFloat((s || "0").replace(/\./g, "").replace(/,/g, "").replace(/\$/g, "")) || 0;
   const getBonifPct = () => clamp(parseFloat(bonifPatStr) || 0, 0, 100) / 100;
   const getDescC1Pct = () => clamp(parseFloat(descC1Str) || 0, 0, 50) / 100;
 
-  const updateRetiro = (name) => {
+  const updateRetiro = name => {
     setRetiroName(name);
     if (!customFoto && MODEL_PHOTOS[name]) {
-      imageToBase64(MODEL_PHOTOS[name].principal).then(b64 => {
-        setFotoUrl(b64 || MODEL_PHOTOS[name].principal);
-      });
+      imageToBase64(MODEL_PHOTOS[name].principal).then(b64 => setFotoUrl(b64 || MODEL_PHOTOS[name].principal));
     } else if (!customFoto) {
       setFotoUrl("");
     }
@@ -517,7 +547,7 @@ export default function App() {
     if (!el) return;
     setExporting(true);
     try {
-      await html2pdf().set({
+      const opt = {
         margin: 0,
         filename: `Simulacion-${clientName.replace(/\s+/g, "-")}.pdf`,
         image: { type: "jpeg", quality: 0.97 },
@@ -526,11 +556,14 @@ export default function App() {
           useCORS: true,
           allowTaint: false,
           letterRendering: true,
-          width: 780,
-          windowWidth: 780
+          width: 794,
+          windowWidth: 794,
+          scrollX: 0,
+          scrollY: 0
         },
-        jsPDF: { unit: "px", format: [780, 1120], orientation: "portrait", hotfixes: ["px_scaling"] }
-      }).from(el).save();
+        jsPDF: { unit: "px", format: [794, 1123], orientation: "portrait", hotfixes: ["px_scaling"] }
+      };
+      await html2pdf().set(opt).from(el).save();
     } catch (err) {
       console.error(err);
       window.print();
@@ -544,7 +577,7 @@ export default function App() {
   const cap = parseCap(capital);
   const liveCalc = cap > 0 ? calculate(planKey, retiroName, cap, getBonifPct(), getDescC1Pct()) : null;
 
-  // ─── FORMULARIO ───
+  // ── FORMULARIO ──
   if (step === "form") {
     return (
       <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a1628, #152a4a, #0d2137)", padding: "20px 12px" }}>
@@ -552,8 +585,7 @@ export default function App() {
           <div style={{ textAlign: "center", marginBottom: 24 }}>
             {logoBase64
               ? <img src={logoBase64} alt="Ford Goldstein" style={{ height: 52, marginBottom: 8, background: "white", padding: "6px 16px", borderRadius: 8 }} />
-              : <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginBottom: 8 }}>Ford | Goldstein</div>
-            }
+              : <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginBottom: 8 }}>Ford | Goldstein</div>}
             <h1 style={{ fontSize: 26, fontWeight: 900, color: "white", margin: "4px 0" }}>Simulador Óvalo</h1>
             <div style={{ fontSize: 12, color: "#6b8db5" }}>Motor de cálculo integrado — Valores Mayo 2026</div>
           </div>
@@ -628,12 +660,12 @@ export default function App() {
 
             {planKey === "ranger_xl_100" && (
               <div style={{ background: "#eff6ff", border: "2px solid #3b82f6", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#1e40af" }}>
-                📌 <strong>Plan 100% financiado:</strong> Adjudicación garantizada cuota 5. Sin integración mínima. Sin bono Ford.
+                📌 <strong>Plan 100%:</strong> Adjudicación garantizada cuota 5. Sin integración mínima. Sin bono Ford.
               </div>
             )}
             {planKey === "territory_sel" && (
               <div style={{ background: "#fef3c7", border: "2px solid #f59e0b", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#92400e" }}>
-                🏷️ <strong>Promo Mayo:</strong> 30% de bonificación sobre alícuota cuota 1 a 13. Cuota fija: $450.000.
+                🏷️ <strong>Promo Mayo:</strong> 30% bonificación sobre alícuota cuota 1 a 13. Cuota fija: $450.000.
               </div>
             )}
 
@@ -660,9 +692,9 @@ export default function App() {
             {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13, fontWeight: 600 }}>{error}</div>}
 
             <button onClick={handleCalc} style={{
-              width: "100%", padding: 16, background: "linear-gradient(135deg, #001f5b, #0056b3)", color: "white",
-              border: "none", borderRadius: 10, fontSize: 16, fontWeight: 900, cursor: "pointer",
-              textTransform: "uppercase", letterSpacing: 2, boxShadow: "0 4px 20px rgba(0,31,91,0.4)"
+              width: "100%", padding: 16, background: "linear-gradient(135deg, #001f5b, #0056b3)",
+              color: "white", border: "none", borderRadius: 10, fontSize: 16, fontWeight: 900,
+              cursor: "pointer", textTransform: "uppercase", letterSpacing: 2, boxShadow: "0 4px 20px rgba(0,31,91,0.4)"
             }}>
               Generar Simulación
             </button>
@@ -672,25 +704,27 @@ export default function App() {
     );
   }
 
-  // ─── PREVIEW ───
+  // ── PREVIEW ──
   return (
     <div style={{ minHeight: "100vh", background: "#e2e8f0", padding: 16 }}>
       <style>{`@media print { .no-print { display: none !important; } }`}</style>
+
       <div className="no-print" style={{ maxWidth: 820, margin: "0 auto 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
         <button onClick={() => setStep("form")} style={{ padding: "10px 20px", background: "white", border: "2px solid #cbd5e1", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#333" }}>
           ← Volver
         </button>
         <button onClick={handleExportPDF} disabled={exporting} style={{
-          padding: "10px 28px", background: exporting ? "#6b7280" : "#001f5b", color: "white", border: "none",
-          borderRadius: 8, cursor: exporting ? "wait" : "pointer", fontWeight: 900, fontSize: 14
+          padding: "10px 28px", background: exporting ? "#6b7280" : "#001f5b",
+          color: "white", border: "none", borderRadius: 8,
+          cursor: exporting ? "wait" : "pointer", fontWeight: 900, fontSize: 14
         }}>
           {exporting ? "Generando PDF..." : "Descargar PDF"}
         </button>
       </div>
 
-      {/* Wrapper con overflow-x hidden para que el doc de 780px no genere scrollbar */}
-      <div style={{ maxWidth: 820, margin: "0 auto", background: "white", borderRadius: 6, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", overflow: "hidden" }}>
-        <div ref={printRef}>
+      {/* El wrapper del doc tiene overflow hidden y width exacto para no generar franja */}
+      <div style={{ maxWidth: 794, margin: "0 auto", background: "white", borderRadius: 4, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", overflow: "hidden" }}>
+        <div ref={printRef} style={{ width: 794 }}>
           <DocPreview data={result} clientName={clientName} validez={validez} logoBase64={logoBase64} fotoUrl={fotoUrl} />
         </div>
       </div>
