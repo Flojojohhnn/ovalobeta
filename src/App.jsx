@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import html2pdf from "html2pdf.js";
-import { Analytics } from "@vercel/analytics/react";
 
 // ============================================================
 // DATA: PLANES DE SUSCRIPCIÓN (MAYO 2026)
@@ -224,7 +223,6 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
   return (
     <div style={{ fontFamily: "'Segoe UI',Roboto,system-ui,sans-serif", fontSize: 11, color: "#333", background: "white" }}>
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "24px 28px" }}>
-        {/* HEADER */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `4px solid ${B}`, paddingBottom: 10, marginBottom: 16 }}>
           <div>
             {logoBase64 ? (
@@ -240,7 +238,6 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
           </div>
         </div>
 
-        {/* CLIENT BAR */}
         <div style={{ border: `2px solid ${B}`, borderRadius: 4, padding: "10px 20px", display: "flex", justifyContent: "space-between", marginBottom: 16, background: "#f8f9fa" }}>
           <div>
             <div style={{ fontSize: 10, color: "#666" }}>Titular de Gestión:</div>
@@ -252,9 +249,7 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
           </div>
         </div>
 
-        {/* MAIN 2-COL */}
         <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 16 }}>
-          {/* LEFT COL */}
           <div>
             <div style={{ border: "2px solid #ddd", borderRadius: 4, marginBottom: 12, overflow: "hidden" }}>
               <SectionHead>1. Valores de Referencia del Plan</SectionHead>
@@ -278,12 +273,10 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
                 <Row label="(-) Gastos de Gestión:" value={`${fmt(d.gastosGestion)}*`} color="#d32f2f" />
                 <Row label="(-) Diferencia Modelo:" value={d.diffModelo > 0 ? `${fmt(d.diffModelo)}*` : "$0*"} color="#d32f2f" />
                 <Row label={`(-) Patentamiento (${Math.round(d.bonifPatentPct*100)}% BONIF.):`} value={d.patNeto === 0 ? "$0*" : `${fmt(d.patNeto)}*`} color="#16a34a" />
-
                 <div style={{ background: "#1a1a1a", color: "white", padding: 10, textAlign: "center", borderRadius: 4, margin: "10px 0" }}>
                   <div style={{ fontSize: 9, textTransform: "uppercase", marginBottom: 2 }}>Oferta de Licitación Neta (Puja)</div>
                   <strong style={{ fontSize: 16 }}>{fmt(d.ofertaReal)}*</strong>
                 </div>
-
                 <div style={{ background: "#fffdf5", border: "2px solid #edcc8d", padding: 10, borderRadius: 4 }}>
                   <div style={{ fontWeight: 900, borderBottom: "1px solid #edcc8d", marginBottom: 8, fontSize: 10 }}>RESULTADO PROYECTADO</div>
                   <Row label="Reducción de Plazo:" value={`${d.nAdelanto + d.regalo} Cuotas Canceladas`} color="#333" border={false} />
@@ -300,7 +293,6 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
             </div>
           </div>
 
-          {/* RIGHT COL */}
           <div>
             <div style={{ border: "2px solid #ddd", borderRadius: 4, marginBottom: 12, overflow: "hidden" }}>
               <SectionHead>3. Proyección de cuotas</SectionHead>
@@ -325,19 +317,16 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
                   <strong>ALÍCUOTA PURA (Para adelantos)</strong>
                   <strong style={{ color: B, fontSize: 13 }}>{fmt(p.ap)}*</strong>
                 </div>
-
                 {p.promoAlicuota && (
                   <div style={{ background: "#fef3c7", border: "1px solid #f59e0b", padding: 6, borderRadius: 4, marginTop: 6, fontSize: 9, color: "#92400e" }}>
                     🏷️ <strong>Promo Mayo:</strong> {p.promoAlicuota.nota}
                   </div>
                 )}
-
                 {d.is100 && (
                   <div style={{ background: "#eff6ff", border: "1px solid #3b82f6", padding: 6, borderRadius: 4, marginTop: 6, fontSize: 9, color: "#1e40af" }}>
                     📌 <strong>Plan 100% financiado.</strong> Adjudicación asegurada en cuota 5. Integración: {fmt(p.intCuota5)}.
                   </div>
                 )}
-
                 <table style={{ width: "100%", marginTop: 10, borderCollapse: "collapse", fontSize: 10, background: "#f9f9f9" }}>
                   <thead><tr>
                     <th style={{ background: "#eef2f7", color: B, padding: 6, textAlign: "left", fontSize: 9, textTransform: "uppercase" }}>Si pagás mensualmente:</th>
@@ -392,9 +381,7 @@ export default function App() {
   const [planKey, setPlanKey] = useState("ranger_xl");
   const [retiroName, setRetiroName] = useState("Maverick XLT");
   const [capital, setCapital] = useState("");
-  // Patentamiento: valor libre 0-100 (porcentaje de bonificación)
   const [bonifPatStr, setBonifPatStr] = useState("50");
-  // Descuento C1: valor libre 0-50 (porcentaje de descuento)
   const [descC1Str, setDescC1Str] = useState("0");
   const [validez, setValidez] = useState("20/05/26");
   const [fotoUrl, setFotoUrl] = useState("");
@@ -472,186 +459,162 @@ export default function App() {
   const cap = parseCap(capital);
   const liveCalc = cap > 0 ? calculate(planKey, retiroName, cap, getBonifPct(), getDescC1Pct()) : null;
 
-  // ============================================================
-  // FORM
-  // ============================================================
   if (step === "form") {
     return (
-      <>
-        <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a1628, #152a4a, #0d2137)", padding: "20px 12px" }}>
-          <div style={{ maxWidth: 660, margin: "0 auto" }}>
-            <div style={{ textAlign: "center", marginBottom: 24 }}>
-              {logoBase64 ? (
-                <img src={logoBase64} alt="Ford Goldstein" style={{ height: 52, marginBottom: 8, background: "white", padding: "6px 16px", borderRadius: 8 }} />
-              ) : (
-                <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginBottom: 8 }}>Ford | Goldstein</div>
-              )}
-              <h1 style={{ fontSize: 26, fontWeight: 900, color: "white", margin: "4px 0" }}>Simulador Óvalo</h1>
-              <div style={{ fontSize: 12, color: "#6b8db5" }}>Motor de cálculo integrado — Valores Mayo 2026</div>
+      <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a1628, #152a4a, #0d2137)", padding: "20px 12px" }}>
+        <div style={{ maxWidth: 660, margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: 24 }}>
+            {logoBase64 ? (
+              <img src={logoBase64} alt="Ford Goldstein" style={{ height: 52, marginBottom: 8, background: "white", padding: "6px 16px", borderRadius: 8 }} />
+            ) : (
+              <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginBottom: 8 }}>Ford | Goldstein</div>
+            )}
+            <h1 style={{ fontSize: 26, fontWeight: 900, color: "white", margin: "4px 0" }}>Simulador Óvalo</h1>
+            <div style={{ fontSize: 12, color: "#6b8db5" }}>Motor de cálculo integrado — Valores Mayo 2026</div>
+          </div>
+
+          <div style={{ background: "white", borderRadius: 16, padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
+            <div style={{ marginBottom: 16 }}>
+              <label style={LS}>Nombre del Cliente</label>
+              <input style={IS} placeholder="Ej: Jorgelina" value={clientName} onChange={e => setClientName(e.target.value)} />
             </div>
 
-            <div style={{ background: "white", borderRadius: 16, padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
-              <div style={{ marginBottom: 16 }}>
-                <label style={LS}>Nombre del Cliente</label>
-                <input style={IS} placeholder="Ej: Jorgelina" value={clientName} onChange={e => setClientName(e.target.value)} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={LS}>Plan de Suscripción</label>
+                <select style={IS} value={planKey} onChange={e => setPlanKey(e.target.value)}>
+                  {Object.entries(PLANS).map(([k, p]) => <option key={k} value={k}>{p.label}</option>)}
+                </select>
               </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-                <div>
-                  <label style={LS}>Plan de Suscripción</label>
-                  <select style={IS} value={planKey} onChange={e => setPlanKey(e.target.value)}>
-                    {Object.entries(PLANS).map(([k, p]) => <option key={k} value={k}>{p.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={LS}>Modelo de Retiro</label>
-                  <select style={IS} value={retiroName} onChange={e => updateRetiro(e.target.value)}>
-                    {RETIRO_MODELS.map(g => (
-                      <optgroup key={g.group} label={`── ${g.group} ──`}>
-                        {g.models.map(m => <option key={m.name} value={m.name}>{m.name} — {fmt(m.vm)}</option>)}
-                      </optgroup>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label style={LS}>Modelo de Retiro</label>
+                <select style={IS} value={retiroName} onChange={e => updateRetiro(e.target.value)}>
+                  {RETIRO_MODELS.map(g => (
+                    <optgroup key={g.group} label={`── ${g.group} ──`}>
+                      {g.models.map(m => <option key={m.name} value={m.name}>{m.name} — {fmt(m.vm)}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
               </div>
-
-              <div style={{ marginBottom: 16 }}>
-                <label style={LS}>Capital Disponible del Cliente ($)</label>
-                <input style={IS} placeholder="20000000" value={capital} onChange={e => setCapital(e.target.value)} />
-                {cap > 0 && <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{fmt(cap)}</div>}
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
-                {/* Bonif. Patentamiento - input libre */}
-                <div>
-                  <label style={LS}>Bonif. Patent. (%)</label>
-                  <div style={{ position: "relative" }}>
-                    <input
-                      style={{ ...IS, paddingRight: 30 }}
-                      type="number"
-                      min="0" max="100"
-                      placeholder="50"
-                      value={bonifPatStr}
-                      onChange={e => setBonifPatStr(e.target.value)}
-                      onBlur={e => {
-                        const v = clamp(parseFloat(e.target.value) || 0, 0, 100);
-                        setBonifPatStr(String(v));
-                      }}
-                    />
-                    <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 14, fontWeight: 700, pointerEvents: "none" }}>%</span>
-                  </div>
-                  <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>
-                    Ahorro: {fmt((allRetiroModels.find(m => m.name === retiroName)?.vm || 0) * 0.07 * (getBonifPct()))}
-                  </div>
-                </div>
-
-                {/* Desc. C1 - input libre */}
-                <div>
-                  <label style={LS}>Desc. C1 (TC) (%)</label>
-                  <div style={{ position: "relative" }}>
-                    <input
-                      style={{ ...IS, paddingRight: 30 }}
-                      type="number"
-                      min="0" max="50"
-                      placeholder="0"
-                      value={descC1Str}
-                      onChange={e => setDescC1Str(e.target.value)}
-                      onBlur={e => {
-                        const v = clamp(parseFloat(e.target.value) || 0, 0, 50);
-                        setDescC1Str(String(v));
-                      }}
-                    />
-                    <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 14, fontWeight: 700, pointerEvents: "none" }}>%</span>
-                  </div>
-                  <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>
-                    {getDescC1Pct() > 0 ? `Desc: ${fmt(PLANS[planKey]?.c1 * getDescC1Pct())}` : "Sin descuento"}
-                  </div>
-                </div>
-
-                <div>
-                  <label style={LS}>Válido hasta</label>
-                  <input style={IS} value={validez} onChange={e => setValidez(e.target.value)} />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 20, padding: 14, background: "#f1f5f9", borderRadius: 10 }}>
-                <label style={LS}>Foto Unidad {MODEL_PHOTOS[retiroName] && !customFoto ? "(auto)" : ""}</label>
-                <input type="file" accept="image/*" onChange={e => handleImg(e, setFotoUrl, setCustomFoto)} style={{ fontSize: 11 }} />
-                {fotoUrl && <img src={fotoUrl} alt="" style={{ height: 40, marginTop: 6, objectFit: "contain" }} />}
-              </div>
-
-              {planKey === "ranger_xl_100" && (
-                <div style={{ background: "#eff6ff", border: "2px solid #3b82f6", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#1e40af" }}>
-                  📌 <strong>Plan 100% financiado:</strong> Adjudicación asegurada en cuota 5. Sin integración mínima. Sin bono Ford.
-                </div>
-              )}
-
-              {planKey === "territory_sel" && (
-                <div style={{ background: "#fef3c7", border: "2px solid #f59e0b", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#92400e" }}>
-                  🏷️ <strong>Promo Mayo:</strong> 30% de bonificación sobre alícuota de cuota 1 a 13. Cuota fija resultante: $450.000.
-                </div>
-              )}
-
-              {liveCalc && liveCalc.ofertaReal > 0 && (
-                <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                  <div style={{ fontSize: 10, fontWeight: 800, color: "#003478", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Vista Rápida</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, textAlign: "center" }}>
-                    {[
-                      ["Puja", fmt(liveCalc.ofertaReal), `${liveCalc.pujaPct.toFixed(1)}% VM`, liveCalc.probColor],
-                      ["Canceladas", `${liveCalc.nAdelanto + liveCalc.regalo}`, "cuotas", "#16a34a"],
-                      ["Restantes", `${liveCalc.cuotasRestantes}`, `de ${liveCalc.plan.cuotas}`, "#003478"],
-                      ["Ahorro", fmt(liveCalc.totalAhorro), "total", "#16a34a"]
-                    ].map(([title, val, sub, color], i) => (
-                      <div key={i}>
-                        <div style={{ fontSize: 9, color: "#64748b", textTransform: "uppercase" }}>{title}</div>
-                        <div style={{ fontWeight: 900, fontSize: 15, color }}>{val}</div>
-                        <div style={{ fontSize: 9, color }}>{sub}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13, fontWeight: 600 }}>{error}</div>}
-
-              <button onClick={handleCalc} style={{
-                width: "100%", padding: 16, background: "linear-gradient(135deg, #003478, #0056b3)", color: "white",
-                border: "none", borderRadius: 10, fontSize: 16, fontWeight: 900, cursor: "pointer",
-                textTransform: "uppercase", letterSpacing: 2, boxShadow: "0 4px 20px rgba(0,52,120,0.4)"
-              }}>
-                Generar Simulación
-              </button>
             </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={LS}>Capital Disponible del Cliente ($)</label>
+              <input style={IS} placeholder="20000000" value={capital} onChange={e => setCapital(e.target.value)} />
+              {cap > 0 && <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{fmt(cap)}</div>}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={LS}>Bonif. Patent. (%)</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    style={{ ...IS, paddingRight: 30 }}
+                    type="number" min="0" max="100" placeholder="50"
+                    value={bonifPatStr}
+                    onChange={e => setBonifPatStr(e.target.value)}
+                    onBlur={e => setBonifPatStr(String(clamp(parseFloat(e.target.value) || 0, 0, 100)))}
+                  />
+                  <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 14, fontWeight: 700, pointerEvents: "none" }}>%</span>
+                </div>
+                <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>
+                  Ahorro: {fmt((allRetiroModels.find(m => m.name === retiroName)?.vm || 0) * 0.07 * getBonifPct())}
+                </div>
+              </div>
+
+              <div>
+                <label style={LS}>Desc. C1 (TC) (%)</label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    style={{ ...IS, paddingRight: 30 }}
+                    type="number" min="0" max="50" placeholder="0"
+                    value={descC1Str}
+                    onChange={e => setDescC1Str(e.target.value)}
+                    onBlur={e => setDescC1Str(String(clamp(parseFloat(e.target.value) || 0, 0, 50)))}
+                  />
+                  <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 14, fontWeight: 700, pointerEvents: "none" }}>%</span>
+                </div>
+                <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>
+                  {getDescC1Pct() > 0 ? `Desc: ${fmt(PLANS[planKey]?.c1 * getDescC1Pct())}` : "Sin descuento"}
+                </div>
+              </div>
+
+              <div>
+                <label style={LS}>Válido hasta</label>
+                <input style={IS} value={validez} onChange={e => setValidez(e.target.value)} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 20, padding: 14, background: "#f1f5f9", borderRadius: 10 }}>
+              <label style={LS}>Foto Unidad {MODEL_PHOTOS[retiroName] && !customFoto ? "(auto)" : ""}</label>
+              <input type="file" accept="image/*" onChange={e => handleImg(e, setFotoUrl, setCustomFoto)} style={{ fontSize: 11 }} />
+              {fotoUrl && <img src={fotoUrl} alt="" style={{ height: 40, marginTop: 6, objectFit: "contain" }} />}
+            </div>
+
+            {planKey === "ranger_xl_100" && (
+              <div style={{ background: "#eff6ff", border: "2px solid #3b82f6", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#1e40af" }}>
+                📌 <strong>Plan 100% financiado:</strong> Adjudicación asegurada en cuota 5. Sin integración mínima. Sin bono Ford.
+              </div>
+            )}
+
+            {planKey === "territory_sel" && (
+              <div style={{ background: "#fef3c7", border: "2px solid #f59e0b", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#92400e" }}>
+                🏷️ <strong>Promo Mayo:</strong> 30% de bonificación sobre alícuota de cuota 1 a 13. Cuota fija resultante: $450.000.
+              </div>
+            )}
+
+            {liveCalc && liveCalc.ofertaReal > 0 && (
+              <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: "#003478", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Vista Rápida</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, textAlign: "center" }}>
+                  {[
+                    ["Puja", fmt(liveCalc.ofertaReal), `${liveCalc.pujaPct.toFixed(1)}% VM`, liveCalc.probColor],
+                    ["Canceladas", `${liveCalc.nAdelanto + liveCalc.regalo}`, "cuotas", "#16a34a"],
+                    ["Restantes", `${liveCalc.cuotasRestantes}`, `de ${liveCalc.plan.cuotas}`, "#003478"],
+                    ["Ahorro", fmt(liveCalc.totalAhorro), "total", "#16a34a"]
+                  ].map(([title, val, sub, color], i) => (
+                    <div key={i}>
+                      <div style={{ fontSize: 9, color: "#64748b", textTransform: "uppercase" }}>{title}</div>
+                      <div style={{ fontWeight: 900, fontSize: 15, color }}>{val}</div>
+                      <div style={{ fontSize: 9, color }}>{sub}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13, fontWeight: 600 }}>{error}</div>}
+
+            <button onClick={handleCalc} style={{
+              width: "100%", padding: 16, background: "linear-gradient(135deg, #003478, #0056b3)", color: "white",
+              border: "none", borderRadius: 10, fontSize: 16, fontWeight: 900, cursor: "pointer",
+              textTransform: "uppercase", letterSpacing: 2, boxShadow: "0 4px 20px rgba(0,52,120,0.4)"
+            }}>
+              Generar Simulación
+            </button>
           </div>
         </div>
-        <Analytics />
-      </>
+      </div>
     );
   }
 
-  // ============================================================
-  // PREVIEW
-  // ============================================================
   return (
-    <>
-      <div style={{ minHeight: "100vh", background: "#e2e8f0", padding: 16 }}>
-        <style>{`@media print { .no-print { display: none !important; } }`}</style>
-        <div className="no-print" style={{ maxWidth: 820, margin: "0 auto 12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          <button onClick={() => setStep("form")} style={{ padding: "10px 20px", background: "white", border: "2px solid #cbd5e1", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#333" }}>
-            ← Volver
-          </button>
-          <button onClick={handleExportPDF} disabled={exporting} style={{
-            padding: "10px 28px", background: exporting ? "#6b7280" : "#003478", color: "white", border: "none",
-            borderRadius: 8, cursor: exporting ? "wait" : "pointer", fontWeight: 900, fontSize: 14, boxShadow: "0 2px 10px rgba(0,52,120,0.3)"
-          }}>
-            {exporting ? "Generando PDF..." : "Descargar PDF"}
-          </button>
-        </div>
-        <div ref={printRef} style={{ maxWidth: 820, margin: "0 auto", background: "white", borderRadius: 6, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", overflow: "hidden" }}>
-          <DocPreview data={result} clientName={clientName} validez={validez} logoBase64={logoBase64} fotoUrl={fotoUrl} />
-        </div>
+    <div style={{ minHeight: "100vh", background: "#e2e8f0", padding: 16 }}>
+      <style>{`@media print { .no-print { display: none !important; } }`}</style>
+      <div className="no-print" style={{ maxWidth: 820, margin: "0 auto 12px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+        <button onClick={() => setStep("form")} style={{ padding: "10px 20px", background: "white", border: "2px solid #cbd5e1", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#333" }}>
+          ← Volver
+        </button>
+        <button onClick={handleExportPDF} disabled={exporting} style={{
+          padding: "10px 28px", background: exporting ? "#6b7280" : "#003478", color: "white", border: "none",
+          borderRadius: 8, cursor: exporting ? "wait" : "pointer", fontWeight: 900, fontSize: 14, boxShadow: "0 2px 10px rgba(0,52,120,0.3)"
+        }}>
+          {exporting ? "Generando PDF..." : "Descargar PDF"}
+        </button>
       </div>
-      <Analytics />
-    </>
+      <div ref={printRef} style={{ maxWidth: 820, margin: "0 auto", background: "white", borderRadius: 6, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", overflow: "hidden" }}>
+        <DocPreview data={result} clientName={clientName} validez={validez} logoBase64={logoBase64} fotoUrl={fotoUrl} />
+      </div>
+    </div>
   );
 }
