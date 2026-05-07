@@ -357,7 +357,7 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
                 </tbody>
               </table>
 
-              <div style={{ background: "#15803d", borderRadius: 8, padding: "12px 14px", marginBottom: 12 }}>
+              <div style={{ background: NAVY, borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
                 <div style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Puja competitiva</div>
                 <div style={{ fontSize: 27, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.ofertaReal)}</div>
                 <div style={{ fontSize: 11, color: d.prob==="ALTA"?"#4ade80":d.prob==="MEDIA-ALTA"?"#fbbf24":"#f87171", marginTop: 4, fontWeight: 700 }}>
@@ -461,7 +461,7 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
                 </tr></tbody>
               </table>
 
-              <div style={{ background: NAVY, borderRadius: 8, padding: "12px 14px", marginBottom: 12 }}>
+              <div style={{ background: "#15803d", borderRadius: 8, padding: "12px 14px", marginBottom: 12 }}>
                 <div style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Ahorro total directo</div>
                 <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.totalAhorro)}</div>
                 <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 5 }}>
