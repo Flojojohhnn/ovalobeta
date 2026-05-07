@@ -122,6 +122,8 @@ function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct, incl
   else if (pujaPct >= 15) { prob = "MEDIA"; probColor = "#f97316"; }
   const ahorroPatent = inclPatent ? patBruto * bonifPatentPct : 0;
   const descC1Monto = plan.c1 * descC1Pct;
+  const totalCanceladas = nAdelanto + regalo;
+  const pctAvance = Math.round((totalCanceladas / plan.cuotas) * 100);
   return {
     plan, planKey, vmPlan, vmRetiro, retiroName, gastosGestion, diffModelo,
     patBruto, patNeto, bonifPatentPct, inclGastos, inclDiff, inclPatent,
@@ -129,65 +131,76 @@ function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct, incl
     ahorroPatent, descC1Pct, descC1Monto, c1Display: plan.c1 - descC1Monto,
     proj1Monthly: plan.cf + plan.ap, proj1Months: Math.ceil(cuotasRestantes / 2),
     proj2Monthly: plan.cf + 2 * plan.ap, proj2Months: Math.ceil(cuotasRestantes / 3),
-    totalAhorro: ahorroPatent + descC1Monto, capital, is100
+    totalAhorro: ahorroPatent + descC1Monto, capital, is100,
+    totalCanceladas, pctAvance
   };
 }
 
-// SVG íconos inline
-const IconTag = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#001f5b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+// ============================================================
+// ÍCONOS SVG
+// ============================================================
+const IcoTag = ({ size = 16, color = "white" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
     <line x1="7" y1="7" x2="7.01" y2="7"/>
   </svg>
 );
-const IconCalendar = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#001f5b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+const IcoCal = ({ size = 16, color = "white" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
     <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
   </svg>
 );
-const IconPie = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#001f5b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+const IcoPie = ({ size = 16, color = "white" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>
   </svg>
 );
-const IconCar = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#001f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+const IcoCar = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#001f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l4 4v6a2 2 0 0 1-2 2h-2"/>
     <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 5v4h8"/>
   </svg>
 );
-const IconScale = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#001f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+const IcoScale = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#001f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="3" x2="12" y2="21"/><path d="M3 6l9-3 9 3"/>
     <path d="M3 6l4.5 9a4.5 4.5 0 0 1-9 0L3 6z"/><path d="M21 6l-4.5 9a4.5 4.5 0 0 1-9 0L21 6z"/>
   </svg>
 );
-const IconCoins = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#001f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+const IcoCoins = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#001f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
   </svg>
 );
-const IconStar = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#001f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+const IcoStar = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#001f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
   </svg>
 );
 
 // ============================================================
 // DOCUMENTO
+// Altura A4: 1123px
+// Header fila 1: 68px, Header fila 2: 72px → total header: 140px
+// Border bottom header: 3px → 143px
+// Footer: 38px
+// Body disponible: 1123 - 143 - 38 = 942px → cada fila body: 471px
 // ============================================================
+const W = 794;
+const NAVY = "#001f5b";
+const BORDER = "#e5e7eb";
+const GRAY = "#6b7280";
+const ROW_H = 471; // altura exacta de cada fila del body
+
 function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
   if (!data) return null;
   const d = data, p = d.plan;
-  const NAVY = "#001f5b";
-  const BORDER = "#e8eaf0";
-  const GRAY = "#6b7280";
-  const W = 794;
 
   const intLabel = d.is100 ? "Integración cuota 5" : `Integración mínima (${Math.round(p.intMinPct*100)}%)`;
   const intValue = d.is100 ? fmt(p.intCuota5) : fmt(p.intMin);
 
+  // Fila de datos
   const DR = ({ label, value, lc, vc, last }) => (
     <tr>
       <td style={{ fontSize: 10.5, color: lc || GRAY, padding: "4px 0", borderBottom: last ? "none" : `0.5px solid ${BORDER}` }}>{label}</td>
@@ -195,6 +208,7 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
     </tr>
   );
 
+  // Título de sección
   const ST = ({ icon, children }) => (
     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
       <div style={{ width: 24, height: 24, background: "#eef1f8", borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{icon}</div>
@@ -205,71 +219,103 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
   return (
     <div style={{ width: W, fontFamily: "'Segoe UI', Arial, sans-serif", background: "#fff", overflow: "hidden" }}>
 
-      {/* ══════════════════════════════════════════════
-          HEADER — fondo blanco, detalles azul blur en bordes
-          Todo en UNA SOLA FILA: logo | nombre+subtítulo | KPIs | fecha
-      ══════════════════════════════════════════════ */}
-      <div style={{
-        background: "#ffffff",
-        width: W, boxSizing: "border-box",
-        padding: "10px 20px",
-        position: "relative",
-        overflow: "hidden",
-        borderBottom: `3px solid ${NAVY}`
-      }}>
-        {/* Blur azul esquina sup izq */}
-        <div style={{ position: "absolute", top: -30, left: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,31,91,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
-        {/* Blur azul esquina sup der */}
-        <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,31,91,0.12) 0%, transparent 70%)", pointerEvents: "none" }} />
+      {/* ══════════════════════════════════
+          HEADER — 2 filas, fondo blanco
+          Total: 140px + border 3px = 143px
+      ══════════════════════════════════ */}
+      <div style={{ background: "#ffffff", width: W, boxSizing: "border-box", borderBottom: `3px solid ${NAVY}`, position: "relative", overflow: "hidden" }}>
 
-        {/* FILA ÚNICA: logo | nombre | KPIs | fecha */}
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        {/* Detalles blur azul en esquinas */}
+        <div style={{ position: "absolute", top: -30, left: -30, width: 110, height: 110, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,31,91,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: -30, right: -30, width: 110, height: 110, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,31,91,0.1) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", bottom: -20, left: "50%", width: 200, height: 80, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,31,91,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
+
+        {/* FILA 1: Logo | Nombre+subtítulo | Fecha */}
+        <table style={{ width: "100%", borderCollapse: "collapse", height: 68 }}>
           <tbody><tr style={{ verticalAlign: "middle" }}>
 
             {/* Logo */}
-            <td style={{ width: 140, verticalAlign: "middle", paddingRight: 14 }}>
+            <td style={{ width: 170, padding: "10px 16px", verticalAlign: "middle" }}>
               {logoBase64
                 ? <img src={logoBase64} alt="Ford Goldstein"
-                    style={{ height: 42, width: "auto", display: "block", border: `1.5px solid ${BORDER}`, borderRadius: 7, padding: "3px 10px" }} />
-                : <span style={{ fontWeight: 800, fontSize: 14, color: NAVY }}>Ford | Goldstein</span>
+                    style={{ height: 48, width: "auto", display: "block", border: `1.5px solid ${BORDER}`, borderRadius: 7, padding: "4px 12px" }} />
+                : <span style={{ fontWeight: 800, fontSize: 16, color: NAVY }}>Ford | Goldstein</span>
               }
             </td>
 
-            {/* Nombre cliente + subtítulo */}
-            <td style={{ verticalAlign: "middle", paddingRight: 14 }}>
-              <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.09em" }}>Propuesta personalizada</div>
-              <div style={{ fontSize: 30, fontWeight: 900, color: NAVY, letterSpacing: "-0.02em", lineHeight: 1 }}>{clientName.toUpperCase()}</div>
-              <div style={{ fontSize: 9.5, color: "#64748b", marginTop: 2 }}>{p.name} · Plan {p.ratio} · {p.cuotas} cuotas · Retiro: {d.retiroName}</div>
+            {/* Nombre cliente + modelo */}
+            <td style={{ padding: "0 16px", verticalAlign: "middle" }}>
+              <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.09em", lineHeight: 1 }}>Propuesta personalizada</div>
+              <div style={{ fontSize: 34, fontWeight: 900, color: NAVY, letterSpacing: "-0.02em", lineHeight: 1, margin: "3px 0 2px" }}>{clientName.toUpperCase()}</div>
+              <div style={{ fontSize: 10, color: "#64748b" }}>{p.name} · Plan {p.ratio} · {p.cuotas} cuotas · Retiro: {d.retiroName}</div>
             </td>
 
-            {/* KPIs compactos — 3 columnas */}
-            <td style={{ verticalAlign: "middle", paddingRight: 14 }}>
-              <table style={{ borderCollapse: "separate", borderSpacing: 5 }}>
-                <tbody><tr>
-                  {[
-                    { icon: <IconTag />, label: "PUJA", value: fmt(d.ofertaReal), sub: `${d.pujaPct.toFixed(1)}% · ${d.prob}`, sc: d.probColor },
-                    { icon: <IconCalendar />, label: "CANCELADAS", value: String(d.nAdelanto + d.regalo), sub: `de ${p.cuotas} cuotas`, sc: GRAY },
-                    { icon: <IconPie />, label: "RESTANTES", value: `${d.cuotasRestantes}`, sub: `Ahorro ${fmt(d.totalAhorro)}`, sc: GRAY }
-                  ].map((k, i) => (
-                    <td key={i} style={{ background: "#f0f4ff", border: `1px solid #dce3f5`, borderRadius: 7, padding: "6px 10px", textAlign: "center", verticalAlign: "middle", minWidth: 90 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 2 }}>
-                        {k.icon}
-                        <span style={{ fontSize: 8, fontWeight: 700, color: NAVY, textTransform: "uppercase", letterSpacing: "0.05em" }}>{k.label}</span>
-                      </div>
-                      <div style={{ fontSize: i === 0 ? 14 : 16, fontWeight: 900, color: NAVY, lineHeight: 1 }}>{k.value}</div>
-                      <div style={{ fontSize: 8.5, color: k.sc, marginTop: 2, fontWeight: 600 }}>{k.sub}</div>
-                    </td>
-                  ))}
-                </tr></tbody>
-              </table>
+            {/* Fecha — celda directa, sin wrapper inline-block */}
+            <td style={{ width: 130, padding: "10px 16px 10px 0", verticalAlign: "middle", textAlign: "right" }}>
+              <div style={{ background: NAVY, borderRadius: 8, padding: "8px 14px", display: "inline-block", textAlign: "center", minWidth: 110 }}>
+                <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.6)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Válido hasta</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", letterSpacing: "-0.01em", lineHeight: 1.1, marginTop: 2 }}>{validez}</div>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>Mayo 2026</div>
+              </div>
             </td>
 
-            {/* Fecha — celda con estilos directos, sin inline-block para PDF */}
-            <td style={{ width: 110, verticalAlign: "middle", textAlign: "right" }}>
-              <div style={{ background: NAVY, borderRadius: 8, padding: "7px 12px", textAlign: "center" }}>
-                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.6)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Válido hasta</div>
-                <div style={{ fontSize: 17, fontWeight: 900, color: "#fff", letterSpacing: "-0.01em", lineHeight: 1.1, marginTop: 2 }}>{validez}</div>
-                <div style={{ fontSize: 7.5, color: "rgba(255,255,255,0.5)", marginTop: 2 }}>Mayo 2026</div>
+          </tr></tbody>
+        </table>
+
+        {/* Separador sutil entre fila 1 y fila 2 */}
+        <div style={{ height: "0.5px", background: "rgba(0,31,91,0.12)", margin: "0 16px" }} />
+
+        {/* FILA 2: 3 KPIs en navy a ancho completo */}
+        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, height: 72 }}>
+          <tbody><tr>
+
+            {/* KPI 1 — Puja */}
+            <td style={{ background: NAVY, padding: "12px 20px", verticalAlign: "middle", width: "33.33%" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1.5px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <IcoTag size={16} color="white" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.55)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em" }}>Puja competitiva</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1, marginTop: 2 }}>{fmt(d.ofertaReal)}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                    <span style={{ fontSize: 10, color: d.probColor, fontWeight: 700 }}>{d.pujaPct.toFixed(1)}% VM · {d.prob}</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+
+            {/* Divisor */}
+            <td style={{ width: 1, background: "rgba(255,255,255,0.15)", padding: 0 }} />
+
+            {/* KPI 2 — Cuotas canceladas */}
+            <td style={{ background: NAVY, padding: "12px 20px", verticalAlign: "middle", width: "33.33%" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1.5px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <IcoCal size={16} color="white" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.55)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em" }}>Cuotas canceladas</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1, marginTop: 2 }}>{d.totalCanceladas}</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 3, fontWeight: 600 }}>de {p.cuotas} · {d.pctAvance}% del plan avanzado</div>
+                </div>
+              </div>
+            </td>
+
+            {/* Divisor */}
+            <td style={{ width: 1, background: "rgba(255,255,255,0.15)", padding: 0 }} />
+
+            {/* KPI 3 — Saldo restante */}
+            <td style={{ background: NAVY, padding: "12px 20px", verticalAlign: "middle", width: "33.33%" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1.5px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <IcoPie size={16} color="white" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.55)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em" }}>Saldo restante</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1, marginTop: 2 }}>{d.cuotasRestantes} cuotas</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginTop: 3, fontWeight: 600 }}>Ahorro total {fmt(d.totalAhorro)}</div>
+                </div>
               </div>
             </td>
 
@@ -277,16 +323,18 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
         </table>
       </div>
 
-      {/* ══════ BODY — 2 columnas, altura ajustada para llenar A4 ══════ */}
+      {/* ══════════════════════════════════
+          BODY — 2 filas × 2 columnas
+          Cada fila: height exacto ROW_H px
+      ══════════════════════════════════ */}
       <table style={{ width: W, borderCollapse: "collapse", tableLayout: "fixed" }}>
         <colgroup><col style={{ width: "50%" }} /><col style={{ width: "50%" }} /></colgroup>
         <tbody>
 
-          {/* FILA 1: Plan + foto | Licitación */}
-          <tr style={{ verticalAlign: "top" }}>
-
-            <td style={{ padding: "14px 18px", borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, verticalAlign: "top" }}>
-              <ST icon={<IconCar />}>Plan del vehículo</ST>
+          {/* FILA 1: Plan vehículo + foto | Licitación */}
+          <tr>
+            <td style={{ width: "50%", height: ROW_H, padding: "14px 18px", borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, verticalAlign: "top" }}>
+              <ST icon={<IcoCar />}>Plan del vehículo</ST>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <tbody>
                   <DR label={`VM ${p.name}`} value={fmt(d.vmPlan)} />
@@ -297,20 +345,20 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
                     lc="#9ca3af" vc="#9ca3af" last />
                 </tbody>
               </table>
-              {/* Foto — altura generosa para aprovechar espacio */}
-              <div style={{ marginTop: 12, textAlign: "center", height: 168 }}>
+              {/* Foto — ocupa el espacio restante de la celda */}
+              <div style={{ marginTop: 12, textAlign: "center", height: 220 }}>
                 {fotoUrl
                   ? <img src={fotoUrl} alt={d.retiroName}
-                      style={{ maxWidth: "92%", maxHeight: 168, width: "auto", height: "auto", objectFit: "contain", display: "inline-block" }} />
-                  : <div style={{ height: 168, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      style={{ maxWidth: "95%", maxHeight: 220, width: "auto", height: "auto", objectFit: "contain", display: "inline-block" }} />
+                  : <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <span style={{ fontSize: 10, color: "#9ca3af" }}>{d.retiroName}</span>
                     </div>
                 }
               </div>
             </td>
 
-            <td style={{ padding: "14px 18px", borderBottom: `1px solid ${BORDER}`, verticalAlign: "top" }}>
-              <ST icon={<IconScale />}>Licitación</ST>
+            <td style={{ width: "50%", height: ROW_H, padding: "14px 18px", borderBottom: `1px solid ${BORDER}`, verticalAlign: "top" }}>
+              <ST icon={<IcoScale />}>Licitación</ST>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <tbody>
                   <DR label="Capital disponible" value={fmt(d.capital)} />
@@ -325,24 +373,26 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
                 </tbody>
               </table>
 
-              <div style={{ background: NAVY, borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
+              {/* Bloque puja */}
+              <div style={{ background: NAVY, borderRadius: 8, padding: "12px 14px", marginTop: 12 }}>
                 <div style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Puja competitiva</div>
-                <div style={{ fontSize: 27, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.ofertaReal)}</div>
-                <div style={{ fontSize: 11, color: d.prob==="ALTA"?"#4ade80":d.prob==="MEDIA-ALTA"?"#fbbf24":"#f87171", marginTop: 4, fontWeight: 700 }}>
+                <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.ofertaReal)}</div>
+                <div style={{ fontSize: 11, color: d.prob==="ALTA"?"#4ade80":d.prob==="MEDIA-ALTA"?"#fbbf24":"#f87171", marginTop: 5, fontWeight: 700 }}>
                   {d.pujaPct.toFixed(2)}% del VM · Probabilidad {d.prob}
                 </div>
               </div>
 
-              <div style={{ background: "#f8fafc", borderRadius: 7, border: `0.5px solid ${BORDER}`, padding: "8px 12px", marginTop: 8 }}>
+              {/* Resultado plazo */}
+              <div style={{ background: "#f8fafc", borderRadius: 7, border: `0.5px solid ${BORDER}`, padding: "9px 12px", marginTop: 10 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <tbody>
                     <tr>
                       <td style={{ fontSize: 10.5, color: GRAY, padding: "2px 0", borderBottom: `0.5px solid ${BORDER}` }}>Reducción de plazo</td>
-                      <td style={{ fontSize: 11, fontWeight: 700, textAlign: "right", padding: "2px 0", borderBottom: `0.5px solid ${BORDER}` }}>{d.nAdelanto+d.regalo} cuotas canceladas</td>
+                      <td style={{ fontSize: 11, fontWeight: 700, textAlign: "right", padding: "2px 0", borderBottom: `0.5px solid ${BORDER}` }}>{d.totalCanceladas} cuotas canceladas</td>
                     </tr>
                     <tr>
-                      <td style={{ fontSize: 11, fontWeight: 700, color: NAVY, paddingTop: 5 }}>Saldo restante estimado</td>
-                      <td style={{ fontSize: 19, fontWeight: 900, color: NAVY, textAlign: "right", paddingTop: 5 }}>{d.cuotasRestantes} cuotas</td>
+                      <td style={{ fontSize: 11, fontWeight: 700, color: NAVY, paddingTop: 6 }}>Saldo restante estimado</td>
+                      <td style={{ fontSize: 20, fontWeight: 900, color: NAVY, textAlign: "right", paddingTop: 6 }}>{d.cuotasRestantes} cuotas</td>
                     </tr>
                   </tbody>
                 </table>
@@ -351,30 +401,32 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
           </tr>
 
           {/* FILA 2: Cuotas | Beneficios */}
-          <tr style={{ verticalAlign: "top" }}>
+          <tr>
+            <td style={{ width: "50%", height: ROW_H, padding: "14px 18px", borderRight: `1px solid ${BORDER}`, verticalAlign: "top" }}>
+              <ST icon={<IcoCoins />}>Cuotas</ST>
 
-            <td style={{ padding: "14px 18px", borderRight: `1px solid ${BORDER}`, verticalAlign: "top" }}>
-              <ST icon={<IconCoins />}>Cuotas</ST>
-
+              {/* C1 */}
               <div style={{ background: "#f0fdf4", border: "0.5px solid #86efac", borderRadius: 7, padding: "8px 11px", marginBottom: 6 }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}><tbody><tr>
                   <td><div style={{ fontSize: 12, fontWeight: 700, color: "#15803d" }}>Cuota 1 (Suscripción)</div>
                     {d.descC1Pct > 0 && <div style={{ fontSize: 9.5, color: "#16a34a", marginTop: 1 }}>{Math.round(d.descC1Pct*100)}% de descuento con Tarjeta de Crédito</div>}
                   </td>
-                  <td style={{ textAlign: "right" }}><span style={{ fontSize: 18, fontWeight: 800, color: "#15803d" }}>{fmt(d.c1Display)}</span></td>
+                  <td style={{ textAlign: "right" }}><span style={{ fontSize: 19, fontWeight: 800, color: "#15803d" }}>{fmt(d.c1Display)}</span></td>
                 </tr></tbody></table>
               </div>
 
+              {/* C2 */}
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <tbody><DR label={d.is100?"Cuota 2 a 5":"Cuota 2 (licitación)"} value={fmt(p.schedule.c2_13)} /></tbody>
               </table>
 
+              {/* Cuotas fijas */}
               <div style={{ background: "#fff7ed", border: "0.5px solid #fdba74", borderRadius: 7, padding: "8px 11px", margin: "6px 0" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}><tbody><tr>
                   <td><div style={{ fontSize: 12, fontWeight: 700, color: "#c2410c" }}>{d.is100?"Cuotas 6 a 16 - Fijas":"Cuotas 3 a 13 - Fijas"}</div>
                     <div style={{ fontSize: 9.5, color: "#ea580c", marginTop: 1 }}>12 cuotas garantizadas sin variación</div>
                   </td>
-                  <td style={{ textAlign: "right" }}><span style={{ fontSize: 18, fontWeight: 800, color: "#c2410c" }}>{fmt(d.is100?p.schedule.c14_16:p.schedule.c2_13)}</span></td>
+                  <td style={{ textAlign: "right" }}><span style={{ fontSize: 19, fontWeight: 800, color: "#c2410c" }}>{fmt(d.is100?p.schedule.c14_16:p.schedule.c2_13)}</span></td>
                 </tr></tbody></table>
               </div>
 
@@ -387,79 +439,83 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
               </table>
 
               {p.promo && (
-                <div style={{ background: "#fefce8", border: "0.5px solid #fde68a", borderRadius: 6, padding: "6px 10px", marginTop: 6 }}>
+                <div style={{ background: "#fefce8", border: "0.5px solid #fde68a", borderRadius: 6, padding: "7px 10px", marginTop: 8 }}>
                   <span style={{ fontSize: 10, color: "#92400e", fontWeight: 600 }}>Promo Mayo: {p.promo}</span>
                 </div>
               )}
               {d.is100 && (
-                <div style={{ background: "#eff6ff", border: "0.5px solid #bfdbfe", borderRadius: 6, padding: "6px 10px", marginTop: 6 }}>
+                <div style={{ background: "#eff6ff", border: "0.5px solid #bfdbfe", borderRadius: 6, padding: "7px 10px", marginTop: 8 }}>
                   <span style={{ fontSize: 10, color: "#1d4ed8", fontWeight: 600 }}>Plan 100%: adj. garantizada C5 · Integración: {fmt(p.intCuota5)}</span>
                 </div>
               )}
             </td>
 
-            <td style={{ padding: "14px 18px", verticalAlign: "top" }}>
-              <ST icon={<IconStar />}>Beneficios</ST>
+            <td style={{ width: "50%", height: ROW_H, padding: "14px 18px", verticalAlign: "top" }}>
+              <ST icon={<IcoStar />}>Beneficios</ST>
 
-              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 6, marginBottom: 10 }}>
+              {/* Badges */}
+              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 6, marginBottom: 12 }}>
                 <tbody><tr>
                   <td style={{ border: `1px solid ${BORDER}`, borderRadius: 7, padding: "10px 8px", textAlign: "center", width: "50%", verticalAlign: "middle" }}>
                     <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>PATENTAMIENTO</div>
-                    <div style={{ fontSize: 30, fontWeight: 900, color: NAVY, lineHeight: 1, marginTop: 3 }}>{Math.round(d.bonifPatentPct*100)}%</div>
-                    <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>bonificado</div>
+                    <div style={{ fontSize: 32, fontWeight: 900, color: NAVY, lineHeight: 1, marginTop: 4 }}>{Math.round(d.bonifPatentPct*100)}%</div>
+                    <div style={{ fontSize: 10, color: GRAY, marginTop: 3 }}>bonificado</div>
                   </td>
                   {d.descC1Pct > 0 ? (
                     <td style={{ border: `1px solid ${BORDER}`, borderRadius: 7, padding: "10px 8px", textAlign: "center", width: "50%", verticalAlign: "middle" }}>
                       <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>DESC. CUOTA 1</div>
-                      <div style={{ fontSize: 30, fontWeight: 900, color: NAVY, lineHeight: 1, marginTop: 3 }}>{Math.round(d.descC1Pct*100)}%</div>
-                      <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>con TC</div>
+                      <div style={{ fontSize: 32, fontWeight: 900, color: NAVY, lineHeight: 1, marginTop: 4 }}>{Math.round(d.descC1Pct*100)}%</div>
+                      <div style={{ fontSize: 10, color: GRAY, marginTop: 3 }}>con TC</div>
                     </td>
                   ) : d.bono > 0 ? (
                     <td style={{ border: `1px solid ${BORDER}`, borderRadius: 7, padding: "10px 8px", textAlign: "center", width: "50%", verticalAlign: "middle" }}>
                       <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>BONO FORD</div>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: NAVY, marginTop: 3 }}>{fmt(d.bono)}</div>
-                      <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>en facturación</div>
+                      <div style={{ fontSize: 20, fontWeight: 900, color: NAVY, marginTop: 4 }}>{fmt(d.bono)}</div>
+                      <div style={{ fontSize: 10, color: GRAY, marginTop: 3 }}>en facturación</div>
                     </td>
                   ) : (
                     <td style={{ border: `1px solid ${BORDER}`, borderRadius: 7, padding: "10px 8px", textAlign: "center", width: "50%", verticalAlign: "middle" }}>
                       <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>REGALOS</div>
-                      <div style={{ fontSize: 30, fontWeight: 900, color: NAVY, lineHeight: 1, marginTop: 3 }}>{d.regalo}</div>
-                      <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>alícuota{d.regalo!==1?"s":""}</div>
+                      <div style={{ fontSize: 32, fontWeight: 900, color: NAVY, lineHeight: 1, marginTop: 4 }}>{d.regalo}</div>
+                      <div style={{ fontSize: 10, color: GRAY, marginTop: 3 }}>alícuota{d.regalo!==1?"s":""}</div>
                     </td>
                   )}
                 </tr></tbody>
               </table>
 
-              <div style={{ background: NAVY, borderRadius: 8, padding: "12px 14px", marginBottom: 12 }}>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Ahorro total directo</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.totalAhorro)}</div>
-                <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 5 }}>
-                  {d.ahorroPatent > 0 && <span style={{ background: "rgba(255,255,255,0.12)", border: "0.5px solid rgba(255,255,255,0.2)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>Patent: {fmt(d.ahorroPatent)}</span>}
-                  {d.descC1Pct > 0 && <span style={{ background: "rgba(255,255,255,0.12)", border: "0.5px solid rgba(255,255,255,0.2)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>C1: {fmt(d.descC1Monto)}</span>}
-                  {d.bono > 0 && <span style={{ background: "rgba(255,255,255,0.12)", border: "0.5px solid rgba(255,255,255,0.2)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>Bono: {fmt(d.bono)}</span>}
+              {/* Ahorro total */}
+              <div style={{ background: NAVY, borderRadius: 8, padding: "14px 16px", marginBottom: 14 }}>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 5 }}>Ahorro total directo</div>
+                <div style={{ fontSize: 30, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.totalAhorro)}</div>
+                <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 5 }}>
+                  {d.ahorroPatent > 0 && <span style={{ background: "rgba(255,255,255,0.12)", border: "0.5px solid rgba(255,255,255,0.2)", borderRadius: 20, padding: "2px 10px", fontSize: 10, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>Patent: {fmt(d.ahorroPatent)}</span>}
+                  {d.descC1Pct > 0 && <span style={{ background: "rgba(255,255,255,0.12)", border: "0.5px solid rgba(255,255,255,0.2)", borderRadius: 20, padding: "2px 10px", fontSize: 10, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>C1: {fmt(d.descC1Monto)}</span>}
+                  {d.bono > 0 && <span style={{ background: "rgba(255,255,255,0.12)", border: "0.5px solid rgba(255,255,255,0.2)", borderRadius: 20, padding: "2px 10px", fontSize: 10, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>Bono: {fmt(d.bono)}</span>}
                 </div>
               </div>
 
-              <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#9ca3af", marginBottom: 7 }}>Si pagás de más mensual:</div>
+              {/* Proyección cancelación */}
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#9ca3af", marginBottom: 8 }}>Si pagás de más mensual:</div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <tbody>
                   <tr>
-                    <td style={{ fontSize: 11, color: GRAY, padding: "4px 0", borderBottom: `0.5px solid ${BORDER}` }}>{fmt(d.proj1Monthly)}/mes</td>
-                    <td style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", textAlign: "right", padding: "4px 0", borderBottom: `0.5px solid ${BORDER}` }}>cancela en {d.proj1Months} meses</td>
+                    <td style={{ fontSize: 11, color: GRAY, padding: "5px 0", borderBottom: `0.5px solid ${BORDER}` }}>{fmt(d.proj1Monthly)}/mes</td>
+                    <td style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", textAlign: "right", padding: "5px 0", borderBottom: `0.5px solid ${BORDER}` }}>cancela en {d.proj1Months} meses</td>
                   </tr>
                   <tr>
-                    <td style={{ fontSize: 11, color: GRAY, paddingTop: 4 }}>{fmt(d.proj2Monthly)}/mes</td>
-                    <td style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", textAlign: "right", paddingTop: 4 }}>cancela en {d.proj2Months} meses</td>
+                    <td style={{ fontSize: 11, color: GRAY, paddingTop: 5 }}>{fmt(d.proj2Monthly)}/mes</td>
+                    <td style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", textAlign: "right", paddingTop: 5 }}>cancela en {d.proj2Months} meses</td>
                   </tr>
                 </tbody>
               </table>
             </td>
           </tr>
+
         </tbody>
       </table>
 
-      {/* FOOTER */}
-      <div style={{ padding: "8px 22px 10px", borderTop: `1px solid ${BORDER}` }}>
+      {/* FOOTER LEGAL — 38px */}
+      <div style={{ padding: "9px 22px", borderTop: `1px solid ${BORDER}`, background: "#fff" }}>
         <p style={{ fontSize: 8, color: "#9ca3af", lineHeight: 1.6, margin: 0 }}>
           * Valores de referencia según valor móvil 01/05/2026. Cuotas fijas por contrato de la {d.is100?"2 a la 16":"3 a la 13"}.{" "}
           {d.inclPatent ? `El beneficio del ${Math.round(d.bonifPatentPct*100)}% aplica sobre aranceles de patentamiento. ` : ""}
@@ -468,6 +524,15 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
         </p>
       </div>
     </div>
+  );
+}
+
+// Componente IcoStar necesita definirse antes de usarse en DocPreview
+function IcoStar() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#001f5b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
   );
 }
 
@@ -537,8 +602,12 @@ export default function App() {
         margin: 0,
         filename: `Simulacion-${clientName.replace(/\s+/g,"-")}.pdf`,
         image: { type: "jpeg", quality: 0.97 },
-        html2canvas: { scale: 2, useCORS: true, allowTaint: false, letterRendering: true, width: 794, windowWidth: 794, scrollX: 0, scrollY: 0 },
-        jsPDF: { unit: "px", format: [794, 1123], orientation: "portrait", hotfixes: ["px_scaling"] }
+        html2canvas: {
+          scale: 2, useCORS: true, allowTaint: false,
+          letterRendering: true, width: W, windowWidth: W,
+          scrollX: 0, scrollY: 0
+        },
+        jsPDF: { unit: "px", format: [W, 1123], orientation: "portrait", hotfixes: ["px_scaling"] }
       }).from(el).save();
     } catch (err) { console.error(err); window.print(); }
     setExporting(false);
@@ -629,12 +698,11 @@ export default function App() {
               </div>
             </div>
 
-            {/* GASTOS OPCIONALES */}
             <div style={{ marginBottom: 16, padding: 14, background: "#f8fafc", borderRadius: 10, border: "1.5px solid #e2e8f0" }}>
               <label style={{ ...LS, marginBottom: 10 }}>Incluir en Licitación</label>
               <CB checked={inclGastos} onChange={e => setInclGastos(e.target.checked)} label={`Gastos de gestión — ${fmt(1500000)}`} />
               <CB checked={inclDiff} onChange={e => setInclDiff(e.target.checked)}
-                label={`Diferencia de modelo — ${(() => { const vm = allRetiroModels.find(m=>m.name===retiroName)?.vm||0; const diff = vm>(PLANS[planKey]?.vm||0) ? vm-(PLANS[planKey]?.vm||0) : 0; return diff>0 ? fmt(diff) : "$0"; })()}`} />
+                label={`Diferencia de modelo — ${(() => { const vm = allRetiroModels.find(m=>m.name===retiroName)?.vm||0; const diff = vm>(PLANS[planKey]?.vm||0)?vm-(PLANS[planKey]?.vm||0):0; return diff>0?fmt(diff):"$0"; })()}`} />
               <CB checked={inclPatent} onChange={e => setInclPatent(e.target.checked)}
                 label={`Patentamiento (${Math.round(getBonifPct()*100)}% bonif.) — ${fmt((allRetiroModels.find(m=>m.name===retiroName)?.vm||0)*0.07*(1-getBonifPct()))}`} />
             </div>
@@ -662,7 +730,7 @@ export default function App() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, textAlign: "center" }}>
                   {[
                     ["Puja", fmt(liveCalc.ofertaReal), `${liveCalc.pujaPct.toFixed(1)}% VM`, liveCalc.probColor],
-                    ["Canceladas", `${liveCalc.nAdelanto+liveCalc.regalo}`, "cuotas", "#16a34a"],
+                    ["Canceladas", `${liveCalc.totalCanceladas}`, "cuotas", "#16a34a"],
                     ["Restantes", `${liveCalc.cuotasRestantes}`, `de ${liveCalc.plan.cuotas}`, "#001f5b"],
                     ["Ahorro", fmt(liveCalc.totalAhorro), "total", "#16a34a"]
                   ].map(([title,val,sub,color],i) => (
@@ -694,12 +762,12 @@ export default function App() {
         <button onClick={() => setStep("form")} style={{ padding: "10px 20px", background: "white", border: "2px solid #cbd5e1", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#333" }}>
           ← Volver
         </button>
-        <button onClick={handleExportPDF} disabled={exporting} style={{ padding: "10px 28px", background: exporting ? "#6b7280" : "#001f5b", color: "white", border: "none", borderRadius: 8, cursor: exporting ? "wait" : "pointer", fontWeight: 900, fontSize: 14 }}>
+        <button onClick={handleExportPDF} disabled={exporting} style={{ padding: "10px 28px", background: exporting ? "#6b7280" : NAVY, color: "white", border: "none", borderRadius: 8, cursor: exporting ? "wait" : "pointer", fontWeight: 900, fontSize: 14 }}>
           {exporting ? "Generando PDF..." : "Descargar PDF"}
         </button>
       </div>
-      <div style={{ maxWidth: 794, margin: "0 auto", background: "white", borderRadius: 4, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", overflow: "hidden" }}>
-        <div ref={printRef} style={{ width: 794 }}>
+      <div style={{ maxWidth: W, margin: "0 auto", background: "white", borderRadius: 4, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", overflow: "hidden" }}>
+        <div ref={printRef} style={{ width: W }}>
           <DocPreview data={result} clientName={clientName} validez={validez} logoBase64={logoBase64} fotoUrl={fotoUrl} />
         </div>
       </div>
