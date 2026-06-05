@@ -165,297 +165,216 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
   if (!data) return null;
   const d = data, p = d.plan;
   const NAVY = "#001f5b";
-  const BORDER = "#e8eaf0";
-  const GRAY = "#6b7280";
+  const BLUE = "#075ca8";
+  const INK = "#172033";
+  const MUTED = "#64748b";
+  const BORDER = "#dbe3ec";
+  const SOFT = "#f4f7fb";
+  const GREEN = "#147a4f";
   const W = 794;
-
-  const intLabel = p.intCuotaLabel || `Integración mínima (${Math.round(p.intMinPct*100)}%)`;
-  const pujaAccent = d.prob === "ALTA" ? "#22c55e" : d.prob === "MEDIA-ALTA" ? "#f59e0b" : "#f97316";
-
-  // Etiqueta del bloque puja según tipo de plan
-  const pujaLabel = d.isAAC ? `Oferta de adjudicación (Cuota ${d.adjCuota})` : "Puja competitiva";
-
-  const DR = ({ label, value, lc, vc, last }) => (
-    <tr>
-      <td style={{ fontSize: 10.5, color: lc || GRAY, padding: "4px 0", borderBottom: last ? "none" : `0.5px solid ${BORDER}` }}>{label}</td>
-      <td style={{ fontSize: 11, fontWeight: 700, color: vc || "#0f172a", textAlign: "right", padding: "4px 0", borderBottom: last ? "none" : `0.5px solid ${BORDER}` }}>{value}</td>
-    </tr>
-  );
-
-  const ST = ({ icon, children }) => (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-      <div style={{ width: 24, height: 24, background: "#eef1f8", borderRadius: 5, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{icon}</div>
-      <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.04em", textTransform: "uppercase", color: NAVY }}>{children}</span>
-    </div>
-  );
-
-  // Cuotas a mostrar según el tipo de plan (AAC3 ranger usa schedule distinto)
   const isRangerAAC = d.planKey === "ranger_aac3";
+  const intLabel = p.intCuotaLabel || `Integración mínima (${Math.round(p.intMinPct * 100)}%)`;
+  const mainBenefit = d.bono > d.totalAhorro
+    ? { label: "Bono Ford", value: fmt(d.bono), detail: "Aplicado en la facturación de la unidad" }
+    : d.totalAhorro > 0
+      ? { label: "Ahorro directo", value: fmt(d.totalAhorro), detail: "Bonificaciones aplicadas a esta propuesta" }
+      : d.regalo > 0
+        ? { label: "Beneficio incluido", value: `${d.regalo} cuota${d.regalo !== 1 ? "s" : ""}`, detail: "Cuotas adicionales canceladas" }
+        : { label: "Plan seleccionado", value: `${p.ratio}`, detail: `${p.cuotas} cuotas totales` };
+
+  const scheduleRows = isRangerAAC
+    ? [
+        ["Cuota 1 · Suscripción", fmt(d.c1Display), d.descC1Pct > 0 ? `${Math.round(d.descC1Pct * 100)}% de descuento aplicado` : "Importe inicial"],
+        ["Cuotas 2 a 3", fmt(p.schedule.c2_3), "Etapa de adjudicación"],
+        ["Cuotas 4 a 16", fmt(p.schedule.c4_16), "Cuota fija"],
+        ["Desde cuota 17", "Decreciente", "Según saldo del plan"]
+      ]
+    : [
+        ["Cuota 1 · Suscripción", fmt(d.c1Display), d.descC1Pct > 0 ? `${Math.round(d.descC1Pct * 100)}% de descuento aplicado` : "Importe inicial"],
+        [d.isAAC ? "Cuotas 2 a 3" : "Cuota 2 · Licitación", fmt(p.schedule.c2_13), d.isAAC ? "Etapa de adjudicación" : "Cuota de participación"],
+        ["Cuotas 3 a 13", fmt(p.schedule.c2_13), "Cuota fija por contrato"],
+        ["Cuotas 14 a 16", fmt(p.schedule.c14_16), "Siguiente etapa"],
+        ["Desde cuota 17", "Decreciente", "Según saldo del plan"]
+      ];
+
+  const includedCosts = [
+    d.inclGastos && ["Gastos de gestión", fmt(d.gastosGestion)],
+    d.inclDiff && ["Diferencia de modelo", d.diffModelo > 0 ? fmt(d.diffModelo) : "$0"],
+    d.inclPatent && [`Patentamiento con ${Math.round(d.bonifPatentPct * 100)}% bonificado`, d.patNeto === 0 ? "$0" : fmt(d.patNeto)]
+  ].filter(Boolean);
+
+  const BenefitPill = ({ children }) => (
+    <span style={{ display: "inline-block", padding: "4px 9px", borderRadius: 20, background: "#eaf5ef", color: GREEN, fontSize: 9.5, fontWeight: 700 }}>{children}</span>
+  );
 
   return (
-    <div style={{ width: W, fontFamily: "'Segoe UI', Arial, sans-serif", background: "#fff", overflow: "hidden" }}>
-
-      {/* HEADER */}
-      <div style={{ background: "#ffffff", width: W, boxSizing: "border-box", borderBottom: `3px solid ${NAVY}`, position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", top: -40, left: -40, width: 140, height: 140, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,31,91,0.10) 0%, transparent 70%)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", top: -40, right: -40, width: 140, height: 140, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,31,91,0.10) 0%, transparent 70%)", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: -30, left: "50%", width: 200, height: 80, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,31,91,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
-
-        {/* Fila 1 */}
+    <div style={{ width: W, minHeight: 1123, boxSizing: "border-box", fontFamily: "'Segoe UI', Arial, sans-serif", color: INK, background: "#fff", overflow: "hidden" }}>
+      {/* Encabezado comercial */}
+      <div style={{ padding: "20px 24px 18px", background: `linear-gradient(135deg, ${NAVY} 0%, #063e78 100%)`, color: "#fff" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <tbody><tr style={{ verticalAlign: "middle" }}>
-            <td style={{ width: 160, paddingLeft: 20, paddingTop: 14, paddingBottom: 10, verticalAlign: "middle" }}>
-              {logoBase64
-                ? <img src={logoBase64} alt="Ford Goldstein" style={{ height: 48, width: "auto", display: "block", border: `1.5px solid ${BORDER}`, borderRadius: 8, padding: "4px 14px" }} />
-                : <span style={{ fontWeight: 800, fontSize: 15, color: NAVY }}>Ford | Goldstein</span>}
-            </td>
-            <td style={{ paddingTop: 14, paddingBottom: 10, paddingRight: 16, verticalAlign: "middle" }}>
-              <div style={{ fontSize: 9, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.09em", marginBottom: 2 }}>Propuesta personalizada</div>
-              <div style={{ fontSize: 36, fontWeight: 900, color: NAVY, letterSpacing: "-0.02em", lineHeight: 1 }}>{clientName.toUpperCase()}</div>
-              <div style={{ fontSize: 9.5, color: "#64748b", marginTop: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 380 }}>
-                {p.name} · Plan {p.ratio} · {p.cuotas} cuotas · Retiro: {d.retiroName}
-              </div>
-            </td>
-            <td style={{ width: 120, paddingTop: 14, paddingBottom: 10, paddingRight: 20, verticalAlign: "middle", textAlign: "right" }}>
-              <table style={{ borderCollapse: "collapse", marginLeft: "auto" }}>
-                <tbody><tr>
-                  <td style={{ background: NAVY, borderRadius: 8, padding: "8px 14px", textAlign: "center" }}>
-                    <div style={{ fontSize: 8, color: "rgba(255,255,255,0.6)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>Válido hasta</div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", letterSpacing: "-0.01em", lineHeight: 1.1, marginTop: 2, whiteSpace: "nowrap" }}>{validez}</div>
-                    <div style={{ fontSize: 7.5, color: "rgba(255,255,255,0.5)", marginTop: 2, whiteSpace: "nowrap" }}>Junio 2026</div>
-                  </td>
-                </tr></tbody>
-              </table>
-            </td>
-          </tr></tbody>
-        </table>
-
-        <div style={{ height: 1, background: BORDER, marginLeft: 20, marginRight: 20 }} />
-
-        {/* Fila 2 - KPIs */}
-        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, padding: "10px 20px 14px 20px", boxSizing: "border-box" }}>
           <tbody><tr>
-            <td style={{ width: "33.33%", padding: "0 6px 0 0", verticalAlign: "top" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", borderRadius: 8, overflow: "hidden" }}>
-                <tbody><tr><td style={{ borderLeft: `4px solid ${pujaAccent}`, borderRadius: "8px 0 0 8px", padding: "10px 14px", background: "#f0f4ff" }}>
-                  <div style={{ fontSize: 8.5, color: NAVY, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3 }}>{d.isAAC ? "Oferta adjudicación" : "Puja competitiva"}</div>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: NAVY, letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.ofertaReal)}</div>
-                  <div style={{ marginTop: 5, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: pujaAccent, background: pujaAccent + "22", borderRadius: 20, padding: "1px 8px", border: `0.5px solid ${pujaAccent}` }}>{d.prob}</span>
-                    <span style={{ fontSize: 9, color: GRAY, fontWeight: 600 }}>{d.pujaPct.toFixed(1)}% del VM</span>
-                  </div>
-                </td></tr></tbody>
-              </table>
+            <td style={{ width: 180, verticalAlign: "middle" }}>
+              {logoBase64
+                ? <img src={logoBase64} alt="Ford Goldstein" style={{ height: 47, width: "auto", maxWidth: 166, display: "block", background: "#fff", borderRadius: 8, padding: "5px 12px", boxSizing: "border-box" }} />
+                : <strong style={{ fontSize: 16 }}>Ford | Goldstein</strong>}
             </td>
-            <td style={{ width: "33.33%", padding: "0 6px", verticalAlign: "top" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody><tr><td style={{ borderLeft: `4px solid ${NAVY}`, borderRadius: "8px 0 0 8px", padding: "10px 14px", background: "#f0f4ff" }}>
-                  <div style={{ fontSize: 8.5, color: NAVY, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3 }}>Cuotas canceladas</div>
-                  <div style={{ fontSize: 26, fontWeight: 900, color: NAVY, letterSpacing: "-0.02em", lineHeight: 1 }}>{d.nAdelanto + d.regalo}</div>
-                  <div style={{ marginTop: 5 }}><span style={{ fontSize: 9, color: GRAY, fontWeight: 600 }}>de {p.cuotas} cuotas del plan</span></div>
-                </td></tr></tbody>
-              </table>
+            <td style={{ verticalAlign: "middle", paddingLeft: 16 }}>
+              <div style={{ fontSize: 9, color: "#9fc5e9", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em" }}>Propuesta personalizada para</div>
+              <div style={{ marginTop: 3, fontSize: 22, fontWeight: 900, letterSpacing: "-0.02em" }}>{clientName}</div>
             </td>
-            <td style={{ width: "33.33%", padding: "0 0 0 6px", verticalAlign: "top" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody><tr><td style={{ borderLeft: `4px solid ${NAVY}`, borderRadius: "8px 0 0 8px", padding: "10px 14px", background: "#f0f4ff" }}>
-                  <div style={{ fontSize: 8.5, color: NAVY, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3 }}>Saldo restante</div>
-                  <div style={{ fontSize: 26, fontWeight: 900, color: NAVY, letterSpacing: "-0.02em", lineHeight: 1 }}>{d.cuotasRestantes} cuotas</div>
-                  <div style={{ marginTop: 5 }}><span style={{ fontSize: 9, color: "#16a34a", fontWeight: 700 }}>Ahorro total: {fmt(d.totalAhorro)}</span></div>
-                </td></tr></tbody>
-              </table>
+            <td style={{ width: 126, verticalAlign: "middle", textAlign: "right" }}>
+              <div style={{ fontSize: 8, color: "#9fc5e9", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>Propuesta válida hasta</div>
+              <div style={{ marginTop: 3, fontSize: 18, fontWeight: 900 }}>{validez}</div>
             </td>
           </tr></tbody>
         </table>
       </div>
 
-      {/* BODY */}
-      <table style={{ width: W, borderCollapse: "collapse", tableLayout: "fixed" }}>
-        <colgroup><col style={{ width: "50%" }} /><col style={{ width: "50%" }} /></colgroup>
-        <tbody>
-          <tr style={{ verticalAlign: "top" }}>
-            {/* Plan + foto */}
-            <td style={{ padding: "14px 18px", borderRight: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}`, verticalAlign: "top" }}>
-              <ST icon={<IconCar />}>Plan del vehículo</ST>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
-                  <DR label={`VM ${p.name}`} value={fmt(d.vmPlan)} />
-                  <DR label={`VM Retiro (${d.retiroName})`} value={fmt(d.vmRetiro)} />
-                  <DR label={intLabel} value={fmt(p.intMin)} />
-                  <DR label={`Saldo a financiar (${Math.round((1-p.intMinPct)*100)}%)`} value={fmt(d.vmPlan*(1-p.intMinPct))} lc="#9ca3af" vc="#9ca3af" last />
-                </tbody>
-              </table>
-              <div style={{ marginTop: 12, textAlign: "center", height: 155 }}>
-                {fotoUrl
-                  ? <img src={fotoUrl} alt={d.retiroName} style={{ maxWidth: "92%", maxHeight: 155, width: "auto", height: "auto", objectFit: "contain", display: "inline-block" }} />
-                  : <div style={{ height: 155, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: "#9ca3af" }}>{d.retiroName}</span></div>}
-              </div>
+      {/* Vehículo y plan */}
+      <div style={{ display: "flex", minHeight: 190, padding: "22px 24px 18px", boxSizing: "border-box", borderBottom: `1px solid ${BORDER}` }}>
+        <div style={{ flex: "1 1 0", paddingRight: 20 }}>
+          <div style={{ fontSize: 10, color: BLUE, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.11em" }}>Tu próximo vehículo</div>
+          <div style={{ marginTop: 5, color: NAVY, fontSize: 31, lineHeight: 1.05, fontWeight: 900, letterSpacing: "-0.035em" }}>{d.retiroName}</div>
+          <div style={{ marginTop: 9, color: MUTED, fontSize: 12.5, lineHeight: 1.45 }}>
+            Suscripción sobre <strong style={{ color: INK }}>{p.name}</strong> · Plan {p.ratio} · {p.cuotas} cuotas
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 13 }}>
+            <span style={{ padding: "5px 9px", borderRadius: 5, background: "#eef4fb", color: NAVY, fontSize: 9.5, fontWeight: 800 }}>Código {p.code}</span>
+            <span style={{ padding: "5px 9px", borderRadius: 5, background: "#eef4fb", color: NAVY, fontSize: 9.5, fontWeight: 800 }}>Valor móvil {fmt(d.vmRetiro)}</span>
+          </div>
+        </div>
+        <div style={{ width: 265, height: 150, display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(145deg, #f8fafc, #eef3f8)", borderRadius: 12 }}>
+          {fotoUrl
+            ? <img src={fotoUrl} alt={d.retiroName} style={{ maxWidth: 245, maxHeight: 138, width: "auto", height: "auto", objectFit: "contain" }} />
+            : <div style={{ color: "#8a98aa", fontSize: 11, fontWeight: 700 }}>{d.retiroName}</div>}
+        </div>
+      </div>
+
+      {/* Resumen decisivo */}
+      <div style={{ padding: "17px 24px 19px" }}>
+        <div style={{ marginBottom: 10, fontSize: 10, color: MUTED, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em" }}>Resumen de tu propuesta</div>
+        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 8 }}>
+          <tbody><tr>
+            <td style={{ width: "25%", padding: "13px 14px", verticalAlign: "top", background: NAVY, borderRadius: 9 }}>
+              <div style={{ color: "#a8c8e8", fontSize: 8.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>Entrega inicial</div>
+              <div style={{ marginTop: 5, color: "#fff", fontSize: 21, fontWeight: 900, letterSpacing: "-0.02em" }}>{fmt(d.capital)}</div>
+              <div style={{ marginTop: 5, color: "#c9dcef", fontSize: 9 }}>Capital total informado</div>
             </td>
+            <td style={{ width: "25%", padding: "13px 14px", verticalAlign: "top", background: SOFT, border: `1px solid ${BORDER}`, borderRadius: 9 }}>
+              <div style={{ color: MUTED, fontSize: 8.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>Cuota 1</div>
+              <div style={{ marginTop: 5, color: NAVY, fontSize: 21, fontWeight: 900, letterSpacing: "-0.02em" }}>{fmt(d.c1Display)}</div>
+              <div style={{ marginTop: 5, color: MUTED, fontSize: 9 }}>{d.descC1Pct > 0 ? "Con descuento aplicado" : "Suscripción"}</div>
+            </td>
+            <td style={{ width: "25%", padding: "13px 14px", verticalAlign: "top", background: SOFT, border: `1px solid ${BORDER}`, borderRadius: 9 }}>
+              <div style={{ color: MUTED, fontSize: 8.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>Cuota estimada</div>
+              <div style={{ marginTop: 5, color: NAVY, fontSize: 21, fontWeight: 900, letterSpacing: "-0.02em" }}>{fmt(p.cf)}</div>
+              <div style={{ marginTop: 5, color: MUTED, fontSize: 9 }}>Cuota fija de referencia</div>
+            </td>
+            <td style={{ width: "25%", padding: "13px 14px", verticalAlign: "top", background: "#eaf7f0", border: "1px solid #b9ddc9", borderRadius: 9 }}>
+              <div style={{ color: GREEN, fontSize: 8.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>{mainBenefit.label}</div>
+              <div style={{ marginTop: 5, color: GREEN, fontSize: 21, fontWeight: 900, letterSpacing: "-0.02em" }}>{mainBenefit.value}</div>
+              <div style={{ marginTop: 5, color: "#47765f", fontSize: 9 }}>{mainBenefit.detail}</div>
+            </td>
+          </tr></tbody>
+        </table>
+      </div>
 
-            {/* Licitación / Adjudicación */}
-            <td style={{ padding: "14px 18px", borderBottom: `1px solid ${BORDER}`, verticalAlign: "top" }}>
-              <ST icon={<IconScale />}>{d.isAAC ? "Adjudicación asegurada" : "Licitación"}</ST>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
-                  <DR label="Capital disponible" value={fmt(d.capital)} />
-                  {d.inclGastos && <DR label="Gastos de gestión" value={fmt(d.gastosGestion)} lc="#dc2626" vc="#dc2626" />}
-                  {d.inclDiff && <DR label="Diferencia de modelo" value={d.diffModelo > 0 ? fmt(d.diffModelo) : "$0"} lc="#dc2626" vc="#dc2626" />}
-                  {d.inclPatent && <DR label={`Patentamiento (${Math.round(d.bonifPatentPct*100)}% bonif.)`} value={d.patNeto === 0 ? "$0" : fmt(d.patNeto)} lc={d.patNeto === 0 ? "#16a34a" : "#dc2626"} vc={d.patNeto === 0 ? "#16a34a" : "#dc2626"} last />}
-                </tbody>
-              </table>
+      {/* Entrega y condición de adjudicación */}
+      <div style={{ display: "flex", gap: 14, padding: "0 24px 18px" }}>
+        <div style={{ flex: "1 1 0", padding: "15px 16px", border: `1px solid ${BORDER}`, borderRadius: 10 }}>
+          <div style={{ fontSize: 11, color: NAVY, fontWeight: 900 }}>Cómo se aplica tu entrega</div>
+          <div style={{ marginTop: 3, color: MUTED, fontSize: 9.5 }}>Los conceptos marcados ya están contemplados dentro del capital informado.</div>
+          <table style={{ width: "100%", marginTop: 9, borderCollapse: "collapse" }}>
+            <tbody>
+              {includedCosts.map(([label, value]) => (
+                <tr key={label}>
+                  <td style={{ padding: "4px 0", color: MUTED, fontSize: 10, borderBottom: `1px solid ${BORDER}` }}>{label}</td>
+                  <td style={{ padding: "4px 0", color: INK, fontSize: 10.5, fontWeight: 800, textAlign: "right", borderBottom: `1px solid ${BORDER}` }}>{value}</td>
+                </tr>
+              ))}
+              <tr>
+                <td style={{ paddingTop: 8, color: NAVY, fontSize: 10.5, fontWeight: 900 }}>Monto neto aplicado al plan</td>
+                <td style={{ paddingTop: 8, color: NAVY, fontSize: 16, fontWeight: 900, textAlign: "right" }}>{fmt(d.ofertaReal)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-              <div style={{ background: NAVY, borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{pujaLabel}</div>
-                <div style={{ fontSize: 27, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.ofertaReal)}</div>
-                <div style={{ fontSize: 11, color: d.prob==="ALTA"?"#4ade80":d.prob==="MEDIA-ALTA"?"#fbbf24":"#f87171", marginTop: 4, fontWeight: 700 }}>
-                  {d.pujaPct.toFixed(2)}% del VM · Probabilidad {d.prob}
+        <div style={{ width: 300, padding: "15px 16px", color: "#fff", background: `linear-gradient(135deg, ${NAVY}, ${BLUE})`, borderRadius: 10 }}>
+          <div style={{ fontSize: 9, color: "#afd0ee", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.09em" }}>{d.isAAC ? "Adjudicación prevista" : "Condición de adjudicación"}</div>
+          <div style={{ marginTop: 5, fontSize: 22, fontWeight: 900 }}>{d.isAAC ? `Cuota ${d.adjCuota} asegurada` : `${d.pujaPct.toFixed(1)}% del valor móvil`}</div>
+          <div style={{ marginTop: 6, color: "#d3e5f5", fontSize: 10, lineHeight: 1.4 }}>
+            {d.isAAC
+              ? `${p.cuotasPagas} cuotas pagas al adjudicar y ${intLabel.toLowerCase()}.`
+              : `Nivel estimado de oferta: ${d.prob}. La adjudicación por licitación depende del resultado del acto.`}
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <div style={{ flex: 1, padding: "8px 9px", background: "rgba(255,255,255,0.11)", borderRadius: 7 }}>
+              <div style={{ color: "#afd0ee", fontSize: 8, fontWeight: 700, textTransform: "uppercase" }}>Cuotas canceladas</div>
+              <div style={{ marginTop: 2, fontSize: 16, fontWeight: 900 }}>{d.nAdelanto + d.regalo}</div>
+            </div>
+            <div style={{ flex: 1, padding: "8px 9px", background: "rgba(255,255,255,0.11)", borderRadius: 7 }}>
+              <div style={{ color: "#afd0ee", fontSize: 8, fontWeight: 700, textTransform: "uppercase" }}>Cuotas restantes</div>
+              <div style={{ marginTop: 2, fontSize: 16, fontWeight: 900 }}>{d.cuotasRestantes}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Cronograma y beneficios */}
+      <div style={{ display: "flex", gap: 14, padding: "0 24px 18px" }}>
+        <div style={{ flex: "1 1 0", padding: "15px 16px", background: SOFT, borderRadius: 10 }}>
+          <div style={{ fontSize: 11, color: NAVY, fontWeight: 900 }}>Tu esquema de cuotas</div>
+          <div style={{ marginTop: 3, color: MUTED, fontSize: 9.5 }}>Valores de referencia por etapa del plan.</div>
+          <div style={{ marginTop: 9 }}>
+            {scheduleRows.map(([label, value, detail], index) => (
+              <div key={label} style={{ display: "flex", alignItems: "center", padding: "6px 0", borderBottom: index === scheduleRows.length - 1 ? "none" : `1px solid ${BORDER}` }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: INK, fontSize: 10.5, fontWeight: 800 }}>{label}</div>
+                  <div style={{ marginTop: 1, color: MUTED, fontSize: 8.5 }}>{detail}</div>
                 </div>
+                <div style={{ color: NAVY, fontSize: 13, fontWeight: 900 }}>{value}</div>
               </div>
+            ))}
+          </div>
+        </div>
 
-              {d.isAAC && (
-                <div style={{ background: "#ecfdf5", border: "0.5px solid #6ee7b7", borderRadius: 7, padding: "8px 12px", marginTop: 8 }}>
-                  <span style={{ fontSize: 10, color: "#047857", fontWeight: 700 }}>✓ Adjudicación garantizada en cuota {d.adjCuota} · {p.cuotasPagas} cuotas pagas al adjudicar</span>
-                </div>
-              )}
+        <div style={{ width: 300, padding: "15px 16px", border: `1px solid ${BORDER}`, borderRadius: 10 }}>
+          <div style={{ fontSize: 11, color: NAVY, fontWeight: 900 }}>Beneficios incluidos</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 9 }}>
+            {d.inclPatent && <BenefitPill>{Math.round(d.bonifPatentPct * 100)}% de patentamiento bonificado</BenefitPill>}
+            {d.descC1Pct > 0 && <BenefitPill>{Math.round(d.descC1Pct * 100)}% de descuento en cuota 1</BenefitPill>}
+            {d.bono > 0 && <BenefitPill>Bono Ford de {fmt(d.bono)}</BenefitPill>}
+            {d.regalo > 0 && <BenefitPill>{d.regalo} cuota{d.regalo !== 1 ? "s" : ""} de regalo</BenefitPill>}
+          </div>
+          <div style={{ marginTop: 13, paddingTop: 11, borderTop: `1px solid ${BORDER}` }}>
+            <div style={{ color: MUTED, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.07em" }}>Integración requerida</div>
+            <div style={{ marginTop: 3, color: NAVY, fontSize: 16, fontWeight: 900 }}>{fmt(p.intMin)}</div>
+            <div style={{ marginTop: 2, color: MUTED, fontSize: 9 }}>{intLabel}</div>
+          </div>
+          <div style={{ marginTop: 10, color: MUTED, fontSize: 9, lineHeight: 1.45 }}>
+            Si el cliente adelanta cuotas mensualmente, puede reducir el plazo estimado a {d.proj1Months} o {d.proj2Months} meses según el monto aplicado.
+          </div>
+        </div>
+      </div>
 
-              <div style={{ background: "#f8fafc", borderRadius: 7, border: `0.5px solid ${BORDER}`, padding: "8px 12px", marginTop: 8 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ fontSize: 10.5, color: GRAY, padding: "2px 0", borderBottom: `0.5px solid ${BORDER}` }}>Reducción de plazo</td>
-                      <td style={{ fontSize: 11, fontWeight: 700, textAlign: "right", padding: "2px 0", borderBottom: `0.5px solid ${BORDER}` }}>{d.nAdelanto+d.regalo} cuotas canceladas</td>
-                    </tr>
-                    <tr>
-                      <td style={{ fontSize: 11, fontWeight: 700, color: NAVY, paddingTop: 5 }}>Saldo restante estimado</td>
-                      <td style={{ fontSize: 19, fontWeight: 900, color: NAVY, textAlign: "right", paddingTop: 5 }}>{d.cuotasRestantes} cuotas</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </td>
-          </tr>
+      {/* Próximo paso */}
+      <div style={{ margin: "0 24px 14px", padding: "14px 17px", display: "flex", alignItems: "center", background: "#edf5fd", border: "1px solid #bfd5ea", borderRadius: 10 }}>
+        <div style={{ width: 35, height: 35, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", background: BLUE, borderRadius: "50%", fontSize: 18, fontWeight: 900 }}>→</div>
+        <div style={{ flex: 1, paddingLeft: 12 }}>
+          <div style={{ color: BLUE, fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em" }}>Próximo paso</div>
+          <div style={{ marginTop: 2, color: NAVY, fontSize: 14, fontWeight: 900 }}>Confirmá esta propuesta con tu asesor</div>
+          <div style={{ marginTop: 2, color: MUTED, fontSize: 9.5 }}>Validá disponibilidad de la unidad, peritaje del usado y documentación para avanzar.</div>
+        </div>
+      </div>
 
-          <tr style={{ verticalAlign: "top" }}>
-            {/* Cuotas */}
-            <td style={{ padding: "14px 18px", borderRight: `1px solid ${BORDER}`, verticalAlign: "top" }}>
-              <ST icon={<IconCoins />}>Cuotas</ST>
-
-              <div style={{ background: "#f0fdf4", border: "0.5px solid #86efac", borderRadius: 7, padding: "8px 11px", marginBottom: 6 }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}><tbody><tr>
-                  <td><div style={{ fontSize: 12, fontWeight: 700, color: "#15803d" }}>Cuota 1 (Suscripción)</div>
-                    {d.descC1Pct > 0 && <div style={{ fontSize: 9.5, color: "#16a34a", marginTop: 1 }}>{Math.round(d.descC1Pct*100)}% de descuento con Tarjeta de Crédito</div>}
-                  </td>
-                  <td style={{ textAlign: "right" }}><span style={{ fontSize: 18, fontWeight: 800, color: "#15803d" }}>{fmt(d.c1Display)}</span></td>
-                </tr></tbody></table>
-              </div>
-
-              {isRangerAAC ? (
-                <>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <tbody><DR label="Cuota 2 a 3" value={fmt(p.schedule.c2_3)} /></tbody>
-                  </table>
-                  <div style={{ background: "#fff7ed", border: "0.5px solid #fdba74", borderRadius: 7, padding: "8px 11px", margin: "6px 0" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}><tbody><tr>
-                      <td><div style={{ fontSize: 12, fontWeight: 700, color: "#c2410c" }}>Cuota 4 a 16</div>
-                        <div style={{ fontSize: 9.5, color: "#ea580c", marginTop: 1 }}>Esquema estable post-adjudicación</div>
-                      </td>
-                      <td style={{ textAlign: "right" }}><span style={{ fontSize: 18, fontWeight: 800, color: "#c2410c" }}>{fmt(p.schedule.c4_16)}</span></td>
-                    </tr></tbody></table>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <tbody><DR label={d.isAAC ? "Cuota 2 a 3" : "Cuota 2 (licitación)"} value={fmt(p.schedule.c2_13)} /></tbody>
-                  </table>
-                  <div style={{ background: "#fff7ed", border: "0.5px solid #fdba74", borderRadius: 7, padding: "8px 11px", margin: "6px 0" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}><tbody><tr>
-                      <td><div style={{ fontSize: 12, fontWeight: 700, color: "#c2410c" }}>Cuotas 3 a 13 - Fijas</div>
-                        <div style={{ fontSize: 9.5, color: "#ea580c", marginTop: 1 }}>12 cuotas garantizadas sin variación</div>
-                      </td>
-                      <td style={{ textAlign: "right" }}><span style={{ fontSize: 18, fontWeight: 800, color: "#c2410c" }}>{fmt(p.schedule.c2_13)}</span></td>
-                    </tr></tbody></table>
-                  </div>
-                </>
-              )}
-
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
-                  <DR label="Cuota 14 a 16" value={fmt(p.schedule.c14_16)} />
-                  <DR label="Cuota 17 al final" value="Decreciente" vc="#9ca3af" />
-                  <DR label="ALÍCUOTA PURA" value={fmt(p.ap)} vc={NAVY} last />
-                </tbody>
-              </table>
-            </td>
-
-            {/* Beneficios */}
-            <td style={{ padding: "14px 18px", verticalAlign: "top" }}>
-              <ST icon={<IconStar />}>Beneficios</ST>
-
-              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 6, marginBottom: 10 }}>
-                <tbody><tr>
-                  <td style={{ border: `1px solid ${BORDER}`, borderRadius: 7, padding: "10px 8px", textAlign: "center", width: "50%", verticalAlign: "middle" }}>
-                    <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>PATENTAMIENTO</div>
-                    <div style={{ fontSize: 30, fontWeight: 900, color: NAVY, lineHeight: 1, marginTop: 3 }}>{Math.round(d.bonifPatentPct*100)}%</div>
-                    <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>bonificado</div>
-                  </td>
-                  {d.descC1Pct > 0 ? (
-                    <td style={{ border: `1px solid ${BORDER}`, borderRadius: 7, padding: "10px 8px", textAlign: "center", width: "50%", verticalAlign: "middle" }}>
-                      <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>DESC. CUOTA 1</div>
-                      <div style={{ fontSize: 30, fontWeight: 900, color: NAVY, lineHeight: 1, marginTop: 3 }}>{Math.round(d.descC1Pct*100)}%</div>
-                      <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>con TC</div>
-                    </td>
-                  ) : d.bono > 0 ? (
-                    <td style={{ border: `1px solid ${BORDER}`, borderRadius: 7, padding: "10px 8px", textAlign: "center", width: "50%", verticalAlign: "middle" }}>
-                      <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>BONO FORD</div>
-                      <div style={{ fontSize: 18, fontWeight: 900, color: NAVY, marginTop: 3 }}>{fmt(d.bono)}</div>
-                      <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>en facturación</div>
-                    </td>
-                  ) : (
-                    <td style={{ border: `1px solid ${BORDER}`, borderRadius: 7, padding: "10px 8px", textAlign: "center", width: "50%", verticalAlign: "middle" }}>
-                      <div style={{ fontSize: 9, color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>REGALOS</div>
-                      <div style={{ fontSize: 30, fontWeight: 900, color: NAVY, lineHeight: 1, marginTop: 3 }}>{d.regalo}</div>
-                      <div style={{ fontSize: 10, color: GRAY, marginTop: 2 }}>alícuota{d.regalo!==1?"s":""}</div>
-                    </td>
-                  )}
-                </tr></tbody>
-              </table>
-
-              <div style={{ background: "#15803d", borderRadius: 8, padding: "12px 14px", marginBottom: 12 }}>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.7)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Ahorro total directo</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.totalAhorro)}</div>
-                <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 5 }}>
-                  {d.ahorroPatent > 0 && <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>Patent: {fmt(d.ahorroPatent)}</span>}
-                  {d.descC1Pct > 0 && <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>C1: {fmt(d.descC1Monto)}</span>}
-                  {d.bono > 0 && <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>Bono: {fmt(d.bono)}</span>}
-                </div>
-              </div>
-
-              <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#9ca3af", marginBottom: 7 }}>Si pagás de más mensual:</div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
-                  <tr>
-                    <td style={{ fontSize: 11, color: GRAY, padding: "4px 0", borderBottom: `0.5px solid ${BORDER}` }}>{fmt(d.proj1Monthly)}/mes</td>
-                    <td style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", textAlign: "right", padding: "4px 0", borderBottom: `0.5px solid ${BORDER}` }}>cancela en {d.proj1Months} meses</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontSize: 11, color: GRAY, paddingTop: 4 }}>{fmt(d.proj2Monthly)}/mes</td>
-                    <td style={{ fontSize: 12, fontWeight: 700, color: "#16a34a", textAlign: "right", paddingTop: 4 }}>cancela en {d.proj2Months} meses</td>
-                  </tr>
-                </tbody>
-              </table>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* FOOTER */}
-      <div style={{ padding: "8px 22px 10px", borderTop: `1px solid ${BORDER}` }}>
-        <p style={{ fontSize: 8, color: "#9ca3af", lineHeight: 1.6, margin: 0 }}>
-          * Valores de referencia según valor móvil 01/06/2026.{" "}
-          {d.isAAC ? `Adjudicación garantizada en cuota ${d.adjCuota}. ` : "Cuotas fijas por contrato de la 3 a la 13. "}
-          {d.inclPatent ? `El beneficio del ${Math.round(d.bonifPatentPct*100)}% aplica sobre aranceles de patentamiento. ` : ""}
-          {d.descC1Pct > 0 ? `El descuento del ${Math.round(d.descC1Pct*100)}% en cuota 1 es mediante reintegro o descuento directo con Tarjeta de Crédito. ` : ""}
+      {/* Condiciones */}
+      <div style={{ padding: "10px 24px 12px", borderTop: `1px solid ${BORDER}` }}>
+        <div style={{ color: NAVY, fontSize: 8.5, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>Condiciones importantes</div>
+        <p style={{ margin: 0, color: "#7b8797", fontSize: 7.8, lineHeight: 1.5 }}>
+          Valores de referencia según valor móvil 01/06/2026. {d.isAAC ? `Adjudicación garantizada en cuota ${d.adjCuota}. ` : "Cuotas fijas por contrato de la 3 a la 13. "}
+          {d.inclPatent ? `El beneficio del ${Math.round(d.bonifPatentPct * 100)}% aplica sobre aranceles de patentamiento. ` : ""}
+          {d.descC1Pct > 0 ? `El descuento del ${Math.round(d.descC1Pct * 100)}% en cuota 1 es mediante reintegro o descuento directo con Tarjeta de Crédito. ` : ""}
           Sujeto a peritaje final del usado y aprobación crediticia de Ford Plan Óvalo.
         </p>
       </div>
