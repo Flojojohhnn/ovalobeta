@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import html2pdf from "html2pdf.js";
+import "./index.css";
+import "./App.css";
 
 // ============================================================
 // PLANES JUNIO 2026
@@ -238,7 +240,7 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
             <td style={{ width: "33.33%", padding: "0 6px 0 0", verticalAlign: "top" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", borderRadius: 8, overflow: "hidden" }}>
                 <tbody><tr><td style={{ borderLeft: `4px solid ${pujaAccent}`, borderRadius: "8px 0 0 8px", padding: "10px 14px", background: "#f0f4ff" }}>
-                  <div style={{ fontSize: 8.5, color: NAVY, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3 }}>{d.isAAC ? "Oferta adjudicación" : "Puja competitiva"}</div>
+                  <div style={{ fontSize: 8.5, color: NAVY, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3 }}>{d.isAAC ? "Entrega para adjudicar" : "Entrega aplicada al plan"}</div>
                   <div style={{ fontSize: 20, fontWeight: 900, color: NAVY, letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.ofertaReal)}</div>
                   <div style={{ marginTop: 5, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                     <span style={{ fontSize: 9, fontWeight: 700, color: pujaAccent, background: pujaAccent + "22", borderRadius: 20, padding: "1px 8px", border: `0.5px solid ${pujaAccent}` }}>{d.prob}</span>
@@ -449,9 +451,18 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
         </tbody>
       </table>
 
+      {/* PRÓXIMO PASO */}
+      <div style={{ margin: "0 18px 8px", padding: "9px 13px", background: "#eef6ff", border: "1px solid #bfd7ee", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 8, color: "#3172ae", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>Próximo paso</div>
+          <div style={{ fontSize: 11, color: NAVY, fontWeight: 800, marginTop: 1 }}>Confirmar la propuesta con tu asesor</div>
+        </div>
+        <div style={{ fontSize: 9.5, color: "#52657b", textAlign: "right" }}>Validá disponibilidad, peritaje y aprobación crediticia.</div>
+      </div>
+
       {/* FOOTER */}
-      <div style={{ padding: "8px 22px 10px", borderTop: `1px solid ${BORDER}` }}>
-        <p style={{ fontSize: 8, color: "#9ca3af", lineHeight: 1.6, margin: 0 }}>
+      <div style={{ padding: "7px 22px 9px", borderTop: `1px solid ${BORDER}` }}>
+        <p style={{ fontSize: 8, color: "#9ca3af", lineHeight: 1.55, margin: 0 }}>
           * Valores de referencia según valor móvil 01/06/2026.{" "}
           {d.isAAC ? `Adjudicación garantizada en cuota ${d.adjCuota}. ` : "Cuotas fijas por contrato de la 3 a la 13. "}
           {d.inclPatent ? `El beneficio del ${Math.round(d.bonifPatentPct*100)}% aplica sobre aranceles de patentamiento. ` : ""}
@@ -536,164 +547,184 @@ export default function App() {
     setExporting(false);
   };
 
-  const IS = { width: "100%", padding: "10px 12px", border: "2px solid #cbd5e1", borderRadius: 8, fontSize: 14, outline: "none", background: "#f8fafc", boxSizing: "border-box" };
-  const LS = { display: "block", fontSize: 11, fontWeight: 700, color: "#475569", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.5px" };
   const cap = parseCap(capital);
   const liveCalc = cap > 0 ? calculate(planKey, retiroName, cap, getBonifPct(), getDescC1Pct(), inclGastos, inclDiff, inclPatent) : null;
+  const selectedRetiro = allRetiroModels.find(m => m.name === retiroName);
+  const selectedPlan = PLANS[planKey];
+  const diffModeloActual = selectedRetiro && selectedRetiro.vm > selectedPlan.vm ? selectedRetiro.vm - selectedPlan.vm : 0;
 
   const CB = ({ checked, onChange, label }) => (
-    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "7px 10px", background: checked ? "#eff6ff" : "#f8fafc", border: `1.5px solid ${checked ? "#3b82f6" : "#cbd5e1"}`, borderRadius: 7, marginBottom: 6, userSelect: "none" }}>
-      <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${checked ? "#3b82f6" : "#94a3b8"}`, background: checked ? "#3b82f6" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        {checked && <svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-      </div>
-      <input type="checkbox" checked={checked} onChange={onChange} style={{ display: "none" }} />
-      <span style={{ fontSize: 13, color: checked ? "#1d4ed8" : "#64748b", fontWeight: checked ? 600 : 400 }}>{label}</span>
+    <label className={`check-option ${checked ? "is-checked" : ""}`}>
+      <input type="checkbox" checked={checked} onChange={onChange} />
+      <span className="check-mark" aria-hidden="true">
+        {checked && <svg width="11" height="11" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+      </span>
+      <span>{label}</span>
     </label>
   );
 
   if (step === "form") {
     return (
-      <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #0a1628, #152a4a, #0d2137)", padding: "20px 12px" }}>
-        <div style={{ maxWidth: 660, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
-            {logoBase64 ? <img src={logoBase64} alt="Ford Goldstein" style={{ height: 52, marginBottom: 8, background: "white", padding: "6px 16px", borderRadius: 8 }} />
-              : <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginBottom: 8 }}>Ford | Goldstein</div>}
-            <h1 style={{ fontSize: 26, fontWeight: 900, color: "white", margin: "4px 0" }}>Simulador Óvalo</h1>
-            <div style={{ fontSize: 12, color: "#6b8db5" }}>Motor de cálculo integrado — Valores Junio 2026</div>
-          </div>
+      <main className="simulator-page">
+        <div className="simulator-shell">
+          <header className="app-header">
+            <div className="brand-block">
+              {logoBase64
+                ? <img src={logoBase64} alt="Ford Goldstein" className="brand-logo" />
+                : <strong className="brand-fallback">Ford | Goldstein</strong>}
+              <span className="period-badge">Valores junio 2026</span>
+            </div>
+            <div className="header-copy">
+              <span className="eyebrow">Simulador Plan Óvalo</span>
+              <h1>Armá una propuesta clara para tu cliente</h1>
+              <p>Completá los datos principales, revisá el resumen y generá una simulación lista para compartir.</p>
+            </div>
+            <ol className="progress-steps" aria-label="Pasos de la simulación">
+              <li className="is-active"><span>1</span> Completá</li>
+              <li><span>2</span> Revisá</li>
+              <li><span>3</span> Compartí</li>
+            </ol>
+          </header>
 
-          <div style={{ background: "white", borderRadius: 16, padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}>
-            <div style={{ marginBottom: 16 }}>
-              <label style={LS}>Nombre del Cliente</label>
-              <input style={IS} placeholder="Ej: Jorgelina" value={clientName} onChange={e => setClientName(e.target.value)} />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={LS}>Plan de Suscripción</label>
-                <select style={IS} value={planKey} onChange={e => setPlanKey(e.target.value)}>
-                  {Object.entries(PLANS).map(([k,p]) => <option key={k} value={k}>{p.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={LS}>Modelo de Retiro</label>
-                <select style={IS} value={retiroName} onChange={e => updateRetiro(e.target.value)}>
-                  {RETIRO_MODELS.map(g => (
-                    <optgroup key={g.group} label={`── ${g.group} ──`}>
-                      {g.models.map(m => <option key={m.name} value={m.name}>{m.name} — {fmt(m.vm)}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={LS}>Capital Disponible del Cliente ($)</label>
-              <input style={IS} placeholder="20000000" value={capital} onChange={e => setCapital(e.target.value)} />
-              {cap > 0 && <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{fmt(cap)}</div>}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
-              <div>
-                <label style={LS}>Bonif. Patent. (%)</label>
-                <div style={{ position: "relative" }}>
-                  <input style={{ ...IS, paddingRight: 30 }} type="number" min="0" max="100" placeholder="50"
-                    value={bonifPatStr} onChange={e => setBonifPatStr(e.target.value)}
-                    onBlur={e => setBonifPatStr(String(clamp(parseFloat(e.target.value)||0,0,100)))} />
-                  <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 14, fontWeight: 700, pointerEvents: "none" }}>%</span>
+          <div className="workspace-grid">
+            <form className="simulator-form" onSubmit={e => { e.preventDefault(); handleCalc(); }}>
+              <section className="form-section">
+                <div className="section-heading">
+                  <span className="section-number">01</span>
+                  <div><h2>Cliente y vehículo</h2><p>Definí para quién es la propuesta y qué unidad quiere retirar.</p></div>
                 </div>
-                <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>
-                  Ahorro: {fmt((allRetiroModels.find(m=>m.name===retiroName)?.vm||0)*0.07*getBonifPct())}
+                <div className="field-grid two-columns">
+                  <div className="field full-width">
+                    <label htmlFor="clientName">Nombre del cliente</label>
+                    <input id="clientName" placeholder="Ej.: Jorgelina" value={clientName} onChange={e => setClientName(e.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="planKey">Plan de suscripción</label>
+                    <select id="planKey" value={planKey} onChange={e => setPlanKey(e.target.value)}>
+                      {Object.entries(PLANS).map(([k,p]) => <option key={k} value={k}>{p.label}</option>)}
+                    </select>
+                    <small>{selectedPlan.cuotas} cuotas · Integración mínima {Math.round(selectedPlan.intMinPct * 100)}%</small>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="retiroName">Vehículo a retirar</label>
+                    <select id="retiroName" value={retiroName} onChange={e => updateRetiro(e.target.value)}>
+                      {RETIRO_MODELS.map(g => <optgroup key={g.group} label={g.group}>{g.models.map(m => <option key={m.name} value={m.name}>{m.name} — {fmt(m.vm)}</option>)}</optgroup>)}
+                    </select>
+                    <small>Valor móvil actual: {fmt(selectedRetiro?.vm || 0)}</small>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label style={LS}>Desc. C1 (TC) (%)</label>
-                <div style={{ position: "relative" }}>
-                  <input style={{ ...IS, paddingRight: 30 }} type="number" min="0" max="50" placeholder="0"
-                    value={descC1Str} onChange={e => setDescC1Str(e.target.value)}
-                    onBlur={e => setDescC1Str(String(clamp(parseFloat(e.target.value)||0,0,50)))} />
-                  <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 14, fontWeight: 700, pointerEvents: "none" }}>%</span>
+              </section>
+
+              <section className="form-section">
+                <div className="section-heading">
+                  <span className="section-number">02</span>
+                  <div><h2>Entrega inicial</h2><p>Indicá el capital disponible y qué conceptos se cubrirán con ese monto.</p></div>
                 </div>
-                <div style={{ fontSize: 10, color: "#64748b", marginTop: 3 }}>
-                  {getDescC1Pct()>0 ? `Desc: ${fmt(PLANS[planKey]?.c1*getDescC1Pct())}` : "Sin descuento"}
+                <div className="field featured-field">
+                  <label htmlFor="capital">Capital disponible del cliente</label>
+                  <div className="money-input"><span>$</span><input id="capital" inputMode="numeric" placeholder="20.000.000" value={capital} onChange={e => setCapital(e.target.value)} /></div>
+                  <small>Este monto se usa para calcular la oferta y los conceptos incluidos.</small>
                 </div>
-              </div>
-              <div>
-                <label style={LS}>Válido hasta</label>
-                <input style={IS} value={validez} onChange={e => setValidez(e.target.value)} />
-              </div>
-            </div>
+                <fieldset className="concepts-box">
+                  <legend>Conceptos a descontar del capital</legend>
+                  <p className="fieldset-help">Desmarcá sólo los conceptos que el cliente abonará por separado.</p>
+                  <div className="check-grid">
+                    <CB checked={inclGastos} onChange={e => setInclGastos(e.target.checked)} label={`Gastos de gestión · ${fmt(1500000)}`} />
+                    <CB checked={inclDiff} onChange={e => setInclDiff(e.target.checked)} label={`Diferencia de modelo · ${fmt(diffModeloActual)}`} />
+                    <CB checked={inclPatent} onChange={e => setInclPatent(e.target.checked)} label={`Patentamiento bonificado · ${fmt((selectedRetiro?.vm||0)*0.07*(1-getBonifPct()))}`} />
+                  </div>
+                </fieldset>
+              </section>
 
-            <div style={{ marginBottom: 16, padding: 14, background: "#f8fafc", borderRadius: 10, border: "1.5px solid #e2e8f0" }}>
-              <label style={{ ...LS, marginBottom: 10 }}>Incluir en Licitación</label>
-              <CB checked={inclGastos} onChange={e => setInclGastos(e.target.checked)} label={`Gastos de gestión — ${fmt(1500000)}`} />
-              <CB checked={inclDiff} onChange={e => setInclDiff(e.target.checked)}
-                label={`Diferencia de modelo — ${(() => { const vm=allRetiroModels.find(m=>m.name===retiroName)?.vm||0; const diff=vm>(PLANS[planKey]?.vm||0)?vm-(PLANS[planKey]?.vm||0):0; return diff>0?fmt(diff):"$0"; })()}`} />
-              <CB checked={inclPatent} onChange={e => setInclPatent(e.target.checked)}
-                label={`Patentamiento (${Math.round(getBonifPct()*100)}% bonif.) — ${fmt((allRetiroModels.find(m=>m.name===retiroName)?.vm||0)*0.07*(1-getBonifPct()))}`} />
-            </div>
-
-            <div style={{ marginBottom: 20, padding: 14, background: "#f1f5f9", borderRadius: 10 }}>
-              <label style={LS}>Foto Unidad {MODEL_PHOTOS[retiroName] && !customFoto ? "(auto)" : ""}</label>
-              <input type="file" accept="image/*" onChange={e => handleImg(e, setFotoUrl, setCustomFoto)} style={{ fontSize: 11 }} />
-              {fotoUrl && <img src={fotoUrl} alt="" style={{ height: 40, marginTop: 6, objectFit: "contain" }} />}
-            </div>
-
-            {(planKey === "ranger_aac3" || planKey === "transit_van") && (
-              <div style={{ background: "#ecfdf5", border: "2px solid #34d399", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#047857" }}>
-                ✓ <strong>Adjudicación asegurada en cuota 3:</strong> El cliente integra el {Math.round(PLANS[planKey].intMinPct*100)}% y tiene 3 cuotas pagas al adjudicar.
-              </div>
-            )}
-            {planKey === "territory_sel" && (
-              <div style={{ background: "#fef3c7", border: "2px solid #f59e0b", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#92400e" }}>
-                🏷️ <strong>Territory:</strong> Cuota fija $457.000 (cuota 2 a 13).
-              </div>
-            )}
-
-            {liveCalc && liveCalc.ofertaReal > 0 && (
-              <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 800, color: "#001f5b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Vista Rápida</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, textAlign: "center" }}>
-                  {[
-                    [liveCalc.isAAC ? "Oferta" : "Puja", fmt(liveCalc.ofertaReal), `${liveCalc.pujaPct.toFixed(1)}% VM`, liveCalc.probColor],
-                    ["Canceladas", `${liveCalc.nAdelanto+liveCalc.regalo}`, "cuotas", "#16a34a"],
-                    ["Restantes", `${liveCalc.cuotasRestantes}`, `de ${liveCalc.plan.cuotas}`, "#001f5b"],
-                    ["Ahorro", fmt(liveCalc.totalAhorro), "total", "#16a34a"]
-                  ].map(([title,val,sub,color],i) => (
-                    <div key={i}>
-                      <div style={{ fontSize: 9, color: "#64748b", textTransform: "uppercase" }}>{title}</div>
-                      <div style={{ fontWeight: 900, fontSize: 15, color }}>{val}</div>
-                      <div style={{ fontSize: 9, color }}>{sub}</div>
-                    </div>
-                  ))}
+              <section className="form-section">
+                <div className="section-heading">
+                  <span className="section-number">03</span>
+                  <div><h2>Beneficios y presentación</h2><p>Aplicá los beneficios vigentes y prepará la propuesta para compartir.</p></div>
                 </div>
+                <div className="field-grid three-columns">
+                  <div className="field">
+                    <label htmlFor="bonifPat">Bonificación de patentamiento</label>
+                    <div className="suffix-input"><input id="bonifPat" type="number" min="0" max="100" value={bonifPatStr} onChange={e => setBonifPatStr(e.target.value)} onBlur={e => setBonifPatStr(String(clamp(parseFloat(e.target.value)||0,0,100)))} /><span>%</span></div>
+                    <small>Ahorro estimado: {fmt((selectedRetiro?.vm||0)*0.07*getBonifPct())}</small>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="descC1">Descuento en cuota 1 (TC)</label>
+                    <div className="suffix-input"><input id="descC1" type="number" min="0" max="50" value={descC1Str} onChange={e => setDescC1Str(e.target.value)} onBlur={e => setDescC1Str(String(clamp(parseFloat(e.target.value)||0,0,50)))} /><span>%</span></div>
+                    <small>{getDescC1Pct()>0 ? `Descuento: ${fmt(selectedPlan.c1*getDescC1Pct())}` : "Sin descuento aplicado"}</small>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="validez">Propuesta válida hasta</label>
+                    <input id="validez" value={validez} onChange={e => setValidez(e.target.value)} />
+                    <small>Se mostrará en el documento final.</small>
+                  </div>
+                  <div className="field full-width upload-field">
+                    <div><label htmlFor="vehiclePhoto">Foto de la unidad {MODEL_PHOTOS[retiroName] && !customFoto ? "(automática)" : ""}</label><small>Opcional. Ayuda a identificar rápidamente el vehículo.</small></div>
+                    <input id="vehiclePhoto" type="file" accept="image/*" onChange={e => handleImg(e, setFotoUrl, setCustomFoto)} />
+                    {fotoUrl && <img src={fotoUrl} alt={`Vista previa de ${retiroName}`} />}
+                  </div>
+                </div>
+              </section>
+
+              {(planKey === "ranger_aac3" || planKey === "transit_van") && (
+                <div className="condition-note success"><strong>Adjudicación asegurada en cuota 3</strong><span>El cliente integra el {Math.round(selectedPlan.intMinPct*100)}% y tiene 3 cuotas pagas al adjudicar.</span></div>
+              )}
+              {planKey === "territory_sel" && (
+                <div className="condition-note warning"><strong>Beneficio Territory</strong><span>Cuota fija $457.000 desde la cuota 2 hasta la 13.</span></div>
+              )}
+
+              {error && <div className="form-error" role="alert">{error}</div>}
+              <div className="form-actions">
+                <div><strong>¿Todo listo?</strong><span>Vas a poder revisar la propuesta antes de descargarla.</span></div>
+                <button type="submit" className="primary-button">Ver propuesta del cliente <span>→</span></button>
               </div>
-            )}
+            </form>
 
-            {error && <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626", padding: 10, borderRadius: 8, marginBottom: 12, fontSize: 13, fontWeight: 600 }}>{error}</div>}
-
-            <button onClick={handleCalc} style={{ width: "100%", padding: 16, background: "linear-gradient(135deg, #001f5b, #0056b3)", color: "white", border: "none", borderRadius: 10, fontSize: 16, fontWeight: 900, cursor: "pointer", textTransform: "uppercase", letterSpacing: 2, boxShadow: "0 4px 20px rgba(0,31,91,0.4)" }}>
-              Generar Simulación
-            </button>
+            <aside className="summary-panel">
+              <div className="summary-heading"><span className="eyebrow">Resumen en vivo</span><h2>Lo esencial de la propuesta</h2><p>Estos son los datos que el cliente debería entender primero.</p></div>
+              <div className="vehicle-summary"><span>Vehículo elegido</span><strong>{retiroName}</strong><small>{selectedPlan.name} · Plan {selectedPlan.ratio}</small></div>
+              {liveCalc && liveCalc.ofertaReal > 0 ? (
+                <div className="summary-content">
+                  <div className="summary-main"><span>Entrega informada</span><strong>{fmt(liveCalc.capital)}</strong><small>Oferta neta estimada: {fmt(liveCalc.ofertaReal)}</small></div>
+                  <div className="summary-kpis">
+                    <div><span>Cuota estimada</span><strong>{fmt(liveCalc.plan.cf)}</strong><small>Cuota fija de referencia</small></div>
+                    <div><span>Cuotas restantes</span><strong>{liveCalc.cuotasRestantes}</strong><small>de {liveCalc.plan.cuotas} del plan</small></div>
+                    <div><span>Beneficio total</span><strong>{fmt(liveCalc.totalAhorro)}</strong><small>Ahorros aplicados</small></div>
+                    <div><span>{liveCalc.isAAC ? "Adjudicación" : "Nivel de oferta"}</span><strong>{liveCalc.isAAC ? `Cuota ${liveCalc.adjCuota}` : liveCalc.prob}</strong><small>{liveCalc.pujaPct.toFixed(1)}% del valor móvil</small></div>
+                  </div>
+                  <div className="next-step"><span>Próximo paso</span><strong>Revisar y compartir la propuesta</strong><p>Generá el documento final y validá con el cliente los importes y condiciones.</p></div>
+                </div>
+              ) : (
+                <div className="summary-empty"><span>1</span><strong>Ingresá el capital disponible</strong><p>El resumen de entrega, cuota y beneficios aparecerá automáticamente acá.</p></div>
+              )}
+            </aside>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#e2e8f0", padding: 16 }}>
-      <style>{`@media print { .no-print { display: none !important; } }`}</style>
-      <div className="no-print" style={{ maxWidth: 820, margin: "0 auto 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-        <button onClick={() => setStep("form")} style={{ padding: "10px 20px", background: "white", border: "2px solid #cbd5e1", borderRadius: 8, cursor: "pointer", fontWeight: 700, fontSize: 13, color: "#333" }}>
-          ← Volver
-        </button>
-        <button onClick={handleExportPDF} disabled={exporting} style={{ padding: "10px 28px", background: exporting ? "#6b7280" : "#001f5b", color: "white", border: "none", borderRadius: 8, cursor: exporting ? "wait" : "pointer", fontWeight: 900, fontSize: 14 }}>
-          {exporting ? "Generando PDF..." : "Descargar PDF"}
-        </button>
-      </div>
-      <div style={{ maxWidth: 794, margin: "0 auto", background: "white", borderRadius: 4, boxShadow: "0 4px 20px rgba(0,0,0,0.1)", overflow: "hidden" }}>
-        <div ref={printRef} style={{ width: 794 }}>
-          <DocPreview data={result} clientName={clientName} validez={validez} logoBase64={logoBase64} fotoUrl={fotoUrl} />
+    <main className="preview-page">
+      <div className="preview-topbar no-print">
+        <div>
+          <span className="eyebrow">Propuesta generada</span>
+          <strong>Revisá los datos antes de compartir</strong>
+        </div>
+        <div className="preview-actions">
+          <button onClick={() => setStep("form")} className="secondary-button">← Editar datos</button>
+          <button onClick={handleExportPDF} disabled={exporting} className="primary-button">
+            {exporting ? "Generando PDF..." : "Descargar y compartir PDF"}
+          </button>
         </div>
       </div>
-    </div>
+      <div className="preview-hint no-print">La propuesta muestra primero vehículo, entrega, cuota y beneficios. Verificá las condiciones finales con el cliente.</div>
+      <div className="document-viewport">
+        <div className="document-scale">
+          <div ref={printRef} className="print-document">
+            <DocPreview data={result} clientName={clientName} validez={validez} logoBase64={logoBase64} fotoUrl={fotoUrl} />
+          </div>
+        </div>
+      </div>
+    </main>
   );
 }
