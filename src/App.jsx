@@ -3,8 +3,6 @@ import html2pdf from "html2pdf.js";
 
 // ============================================================
 // PLANES JUNIO 2026
-// adjCuota: cuota de adjudicación asegurada (3 para AAC3). null = licitación normal C2.
-// cuotasPagas: cuotas consideradas pagadas al adjudicar (2 normal, 3 en AAC3).
 // ============================================================
 const PLANS = {
   ranger_xl: {
@@ -47,13 +45,18 @@ const PLANS = {
     vm: 66279520, ap: 552329, c1: 620000, cf: 786000, intMinPct: 0.30, intMin: 19883856,
     schedule: { c2_13: 786000, c14_16: 707000 },
     bono: null, regalo: 2, regaloCondition: null,
-    cuotasPagas: 3, adjCuota: 3, intCuotaLabel: "Integración mínima (30%)"
+    cuotasPagas: 3, adjCuota: 3, intCuotaLabel: "Integración mínima (30%)",
+    // Esquema fijo de adjudicación Transit
+    transitFixed: {
+      cuotasCanceladas: 5,    // 3 para AAC3 + 2 post retiro
+      saldoRestante: 79,      // 84 - 5
+      serviceUnit: 850000,    // por service
+      servicesCount: 3,       // 3 services bonificados
+      alicuotasPost: 1100000  // 2 alícuotas post retiro
+    }
   }
 };
 
-// ============================================================
-// MODELOS DE RETIRO (VM JUNIO 2026)
-// ============================================================
 const RETIRO_MODELS = [
   { group: "Ranger", models: [
     { name: "Ranger XL 4x2 MT", vm: 50962700 }, { name: "Ranger XL 4x2 AT", vm: 51400000 },
@@ -90,6 +93,7 @@ const MODEL_PHOTOS = {
 
 const allRetiroModels = RETIRO_MODELS.flatMap(g => g.models);
 const isRanger = (name) => name.toLowerCase().startsWith("ranger");
+const isTransit = (name) => name.toLowerCase().startsWith("transit");
 const fmt = (n) => "$" + Math.round(n).toLocaleString("es-AR");
 const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
 
@@ -121,6 +125,9 @@ function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct, incl
   const ofertaReal = capital - gastosEfectivos;
   const isAAC = plan.adjCuota != null;
 
+  // ¿Es modo Transit fijo? → plan Transit Y unidad de retiro es algún Transit
+  const isTransitFixed = planKey === "transit_van" && isTransit(retiroName);
+
   let bono = 0, regalo = 0;
   if (plan.bono?.condition === "ranger" && isRanger(retiroName)) bono = plan.bono.amount;
   if (plan.regaloCondition === "ranger" && isRanger(retiroName)) regalo = plan.regalo;
@@ -129,8 +136,8 @@ function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct, incl
   let saldoAdelanto = Math.max(0, ofertaReal - plan.intMin) + bono;
   if (vmRetiro < vmPlan) saldoAdelanto += vmPlan - vmRetiro;
 
-  const nAdelanto = Math.max(0, Math.floor(saldoAdelanto / plan.ap));
-  const cuotasRestantes = plan.cuotas - nAdelanto - plan.cuotasPagas;
+  let nAdelanto = Math.max(0, Math.floor(saldoAdelanto / plan.ap));
+  let cuotasRestantes = plan.cuotas - nAdelanto - plan.cuotasPagas;
   const pujaPct = vmPlan > 0 ? (ofertaReal / vmPlan) * 100 : 0;
 
   let prob = "BAJA", probColor = "#ef4444";
@@ -141,14 +148,34 @@ function calculate(planKey, retiroName, capital, bonifPatentPct, descC1Pct, incl
   const ahorroPatent = inclPatent ? patBruto * bonifPatentPct : 0;
   const descC1Monto = plan.c1 * descC1Pct;
 
+  // Beneficios para retirar (patentamiento + desc C1)
+  const beneficiosRetiro = ahorroPatent + descC1Monto;
+
+  // Beneficios post retiro (solo Transit fijo): 3 services + 2 alícuotas bonificadas
+  let beneficiosPost = 0;
+  if (isTransitFixed) {
+    const tf = plan.transitFixed;
+    beneficiosPost = (tf.serviceUnit * tf.servicesCount) + tf.alicuotasPost;
+  }
+
+  const totalAhorro = beneficiosRetiro + beneficiosPost;
+
+  // En modo Transit fijo: cuotas canceladas y restantes son fijos
+  if (isTransitFixed) {
+    nAdelanto = plan.transitFixed.cuotasCanceladas;
+    regalo = 0; // ya incluido en el fijo
+    cuotasRestantes = plan.transitFixed.saldoRestante;
+  }
+
   return {
     plan, planKey, vmPlan, vmRetiro, retiroName, gastosGestion, diffModelo,
     patBruto, patNeto, bonifPatentPct, inclGastos, inclDiff, inclPatent,
     ofertaReal, bono, regalo, nAdelanto, cuotasRestantes, pujaPct, prob, probColor,
     ahorroPatent, descC1Pct, descC1Monto, c1Display: plan.c1 - descC1Monto,
+    beneficiosRetiro, beneficiosPost, isTransitFixed,
     proj1Monthly: plan.cf + plan.ap, proj1Months: Math.ceil(cuotasRestantes / 2),
     proj2Monthly: plan.cf + 2 * plan.ap, proj2Months: Math.ceil(cuotasRestantes / 3),
-    totalAhorro: ahorroPatent + descC1Monto, capital, isAAC, adjCuota: plan.adjCuota
+    totalAhorro, capital, isAAC, adjCuota: plan.adjCuota
   };
 }
 
@@ -171,9 +198,12 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
 
   const intLabel = p.intCuotaLabel || `Integración mínima (${Math.round(p.intMinPct*100)}%)`;
   const pujaAccent = d.prob === "ALTA" ? "#22c55e" : d.prob === "MEDIA-ALTA" ? "#f59e0b" : "#f97316";
+  const isRangerAAC = d.planKey === "ranger_aac3";
 
-  // Etiqueta del bloque puja según tipo de plan
-  const pujaLabel = d.isAAC ? `Oferta de adjudicación (Cuota ${d.adjCuota})` : "Puja competitiva";
+  // Etiquetas según tipo de plan
+  // Transit fijo: "Monto para retirar" muestra integración mínima
+  const montoLabel = d.isTransitFixed ? "Monto para retirar" : (d.isAAC ? `Oferta de adjudicación (Cuota ${d.adjCuota})` : "Puja competitiva");
+  const montoValue = d.isTransitFixed ? fmt(p.intMin) : fmt(d.ofertaReal);
 
   const DR = ({ label, value, lc, vc, last }) => (
     <tr>
@@ -189,9 +219,6 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
     </div>
   );
 
-  // Cuotas a mostrar según el tipo de plan (AAC3 ranger usa schedule distinto)
-  const isRangerAAC = d.planKey === "ranger_aac3";
-
   return (
     <div style={{ width: W, fontFamily: "'Segoe UI', Arial, sans-serif", background: "#fff", overflow: "hidden" }}>
 
@@ -201,7 +228,6 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
         <div style={{ position: "absolute", top: -40, right: -40, width: 140, height: 140, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,31,91,0.10) 0%, transparent 70%)", pointerEvents: "none" }} />
         <div style={{ position: "absolute", bottom: -30, left: "50%", width: 200, height: 80, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,31,91,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
 
-        {/* Fila 1 */}
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <tbody><tr style={{ verticalAlign: "middle" }}>
             <td style={{ width: 160, paddingLeft: 20, paddingTop: 14, paddingBottom: 10, verticalAlign: "middle" }}>
@@ -232,17 +258,22 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
 
         <div style={{ height: 1, background: BORDER, marginLeft: 20, marginRight: 20 }} />
 
-        {/* Fila 2 - KPIs */}
+        {/* KPIs */}
         <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, padding: "10px 20px 14px 20px", boxSizing: "border-box" }}>
           <tbody><tr>
             <td style={{ width: "33.33%", padding: "0 6px 0 0", verticalAlign: "top" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", borderRadius: 8, overflow: "hidden" }}>
-                <tbody><tr><td style={{ borderLeft: `4px solid ${pujaAccent}`, borderRadius: "8px 0 0 8px", padding: "10px 14px", background: "#f0f4ff" }}>
-                  <div style={{ fontSize: 8.5, color: NAVY, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3 }}>{d.isAAC ? "Oferta adjudicación" : "Puja competitiva"}</div>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: NAVY, letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.ofertaReal)}</div>
+                <tbody><tr><td style={{ borderLeft: `4px solid ${d.isTransitFixed ? NAVY : pujaAccent}`, borderRadius: "8px 0 0 8px", padding: "10px 14px", background: "#f0f4ff" }}>
+                  <div style={{ fontSize: 8.5, color: NAVY, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3 }}>{d.isTransitFixed ? "Monto para retirar" : (d.isAAC ? "Oferta adjudicación" : "Puja competitiva")}</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: NAVY, letterSpacing: "-0.02em", lineHeight: 1 }}>{montoValue}</div>
                   <div style={{ marginTop: 5, display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: pujaAccent, background: pujaAccent + "22", borderRadius: 20, padding: "1px 8px", border: `0.5px solid ${pujaAccent}` }}>{d.prob}</span>
-                    <span style={{ fontSize: 9, color: GRAY, fontWeight: 600 }}>{d.pujaPct.toFixed(1)}% del VM</span>
+                    {d.isTransitFixed
+                      ? <span style={{ fontSize: 9, fontWeight: 700, color: "#16a34a", background: "#16a34a22", borderRadius: 20, padding: "1px 8px", border: "0.5px solid #16a34a" }}>Integración 30%</span>
+                      : <>
+                          <span style={{ fontSize: 9, fontWeight: 700, color: pujaAccent, background: pujaAccent + "22", borderRadius: 20, padding: "1px 8px", border: `0.5px solid ${pujaAccent}` }}>{d.prob}</span>
+                          <span style={{ fontSize: 9, color: GRAY, fontWeight: 600 }}>{d.pujaPct.toFixed(1)}% del VM</span>
+                        </>
+                    }
                   </div>
                 </td></tr></tbody>
               </table>
@@ -252,7 +283,7 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
                 <tbody><tr><td style={{ borderLeft: `4px solid ${NAVY}`, borderRadius: "8px 0 0 8px", padding: "10px 14px", background: "#f0f4ff" }}>
                   <div style={{ fontSize: 8.5, color: NAVY, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 3 }}>Cuotas canceladas</div>
                   <div style={{ fontSize: 26, fontWeight: 900, color: NAVY, letterSpacing: "-0.02em", lineHeight: 1 }}>{d.nAdelanto + d.regalo}</div>
-                  <div style={{ marginTop: 5 }}><span style={{ fontSize: 9, color: GRAY, fontWeight: 600 }}>de {p.cuotas} cuotas del plan</span></div>
+                  <div style={{ marginTop: 5 }}><span style={{ fontSize: 9, color: GRAY, fontWeight: 600 }}>{d.isTransitFixed ? "3 para AAC3 + 2 post retiro" : `de ${p.cuotas} cuotas del plan`}</span></div>
                 </td></tr></tbody>
               </table>
             </td>
@@ -292,27 +323,39 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
               </div>
             </td>
 
-            {/* Licitación / Adjudicación */}
+            {/* Licitación / Adjudicación / Monto para retirar */}
             <td style={{ padding: "14px 18px", borderBottom: `1px solid ${BORDER}`, verticalAlign: "top" }}>
-              <ST icon={<IconScale />}>{d.isAAC ? "Adjudicación asegurada" : "Licitación"}</ST>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <tbody>
-                  <DR label="Capital disponible" value={fmt(d.capital)} />
-                  {d.inclGastos && <DR label="Gastos de gestión" value={fmt(d.gastosGestion)} lc="#dc2626" vc="#dc2626" />}
-                  {d.inclDiff && <DR label="Diferencia de modelo" value={d.diffModelo > 0 ? fmt(d.diffModelo) : "$0"} lc="#dc2626" vc="#dc2626" />}
-                  {d.inclPatent && <DR label={`Patentamiento (${Math.round(d.bonifPatentPct*100)}% bonif.)`} value={d.patNeto === 0 ? "$0" : fmt(d.patNeto)} lc={d.patNeto === 0 ? "#16a34a" : "#dc2626"} vc={d.patNeto === 0 ? "#16a34a" : "#dc2626"} last />}
-                </tbody>
-              </table>
+              <ST icon={<IconScale />}>{d.isTransitFixed ? "Adjudicación cuota 3" : (d.isAAC ? "Adjudicación asegurada" : "Licitación")}</ST>
+
+              {d.isTransitFixed ? (
+                // Transit fijo: no mostramos capital ni desglose de gastos, solo integración
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <tbody>
+                    <DR label="VM del plan" value={fmt(d.vmPlan)} />
+                    <DR label="Integración mínima (30%)" value={fmt(p.intMin)} vc={NAVY} />
+                    <DR label="Adjudicación garantizada" value={`Cuota ${d.adjCuota}`} vc="#16a34a" last />
+                  </tbody>
+                </table>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <tbody>
+                    <DR label="Capital disponible" value={fmt(d.capital)} />
+                    {d.inclGastos && <DR label="Gastos de gestión" value={fmt(d.gastosGestion)} lc="#dc2626" vc="#dc2626" />}
+                    {d.inclDiff && <DR label="Diferencia de modelo" value={d.diffModelo > 0 ? fmt(d.diffModelo) : "$0"} lc="#dc2626" vc="#dc2626" />}
+                    {d.inclPatent && <DR label={`Patentamiento (${Math.round(d.bonifPatentPct*100)}% bonif.)`} value={d.patNeto === 0 ? "$0" : fmt(d.patNeto)} lc={d.patNeto === 0 ? "#16a34a" : "#dc2626"} vc={d.patNeto === 0 ? "#16a34a" : "#dc2626"} last />}
+                  </tbody>
+                </table>
+              )}
 
               <div style={{ background: NAVY, borderRadius: 8, padding: "12px 14px", marginTop: 10 }}>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{pujaLabel}</div>
-                <div style={{ fontSize: 27, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.ofertaReal)}</div>
-                <div style={{ fontSize: 11, color: d.prob==="ALTA"?"#4ade80":d.prob==="MEDIA-ALTA"?"#fbbf24":"#f87171", marginTop: 4, fontWeight: 700 }}>
-                  {d.pujaPct.toFixed(2)}% del VM · Probabilidad {d.prob}
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{montoLabel}</div>
+                <div style={{ fontSize: 27, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>{montoValue}</div>
+                <div style={{ fontSize: 11, color: d.isTransitFixed ? "#4ade80" : (d.prob==="ALTA"?"#4ade80":d.prob==="MEDIA-ALTA"?"#fbbf24":"#f87171"), marginTop: 4, fontWeight: 700 }}>
+                  {d.isTransitFixed ? `Integración 30% · Adjudicación cuota ${d.adjCuota}` : `${d.pujaPct.toFixed(2)}% del VM · Probabilidad ${d.prob}`}
                 </div>
               </div>
 
-              {d.isAAC && (
+              {(d.isAAC || d.isTransitFixed) && (
                 <div style={{ background: "#ecfdf5", border: "0.5px solid #6ee7b7", borderRadius: 7, padding: "8px 12px", marginTop: 8 }}>
                   <span style={{ fontSize: 10, color: "#047857", fontWeight: 700 }}>✓ Adjudicación garantizada en cuota {d.adjCuota} · {p.cuotasPagas} cuotas pagas al adjudicar</span>
                 </div>
@@ -421,14 +464,37 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
                 </tr></tbody>
               </table>
 
+              {/* Ahorro total — con 2 categorías si es Transit fijo */}
               <div style={{ background: "#15803d", borderRadius: 8, padding: "12px 14px", marginBottom: 12 }}>
                 <div style={{ fontSize: 9, color: "rgba(255,255,255,0.7)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Ahorro total directo</div>
                 <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", letterSpacing: "-0.02em", lineHeight: 1 }}>{fmt(d.totalAhorro)}</div>
-                <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 5 }}>
-                  {d.ahorroPatent > 0 && <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>Patent: {fmt(d.ahorroPatent)}</span>}
-                  {d.descC1Pct > 0 && <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>C1: {fmt(d.descC1Monto)}</span>}
-                  {d.bono > 0 && <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>Bono: {fmt(d.bono)}</span>}
-                </div>
+
+                {d.isTransitFixed ? (
+                  <>
+                    {/* Categoría 1: Beneficios para retirar */}
+                    <div style={{ marginTop: 10, paddingTop: 8, borderTop: "0.5px solid rgba(255,255,255,0.25)" }}>
+                      <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.75)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Beneficios para retirar: {fmt(d.beneficiosRetiro)}</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                        {d.ahorroPatent > 0 && <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>Patent: {fmt(d.ahorroPatent)}</span>}
+                        {d.descC1Pct > 0 && <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>C1: {fmt(d.descC1Monto)}</span>}
+                      </div>
+                    </div>
+                    {/* Categoría 2: Beneficios post retiro */}
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: "0.5px solid rgba(255,255,255,0.25)" }}>
+                      <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.75)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Beneficios post retiro: {fmt(d.beneficiosPost)}</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                        <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>3 services: {fmt(p.transitFixed.serviceUnit * p.transitFixed.servicesCount)}</span>
+                        <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>2 alícuotas: {fmt(p.transitFixed.alicuotasPost)}</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 5 }}>
+                    {d.ahorroPatent > 0 && <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>Patent: {fmt(d.ahorroPatent)}</span>}
+                    {d.descC1Pct > 0 && <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>C1: {fmt(d.descC1Monto)}</span>}
+                    {d.bono > 0 && <span style={{ background: "rgba(255,255,255,0.15)", border: "0.5px solid rgba(255,255,255,0.3)", borderRadius: 20, padding: "2px 9px", fontSize: 9.5, color: "#fff", fontWeight: 600 }}>Bono: {fmt(d.bono)}</span>}
+                  </div>
+                )}
               </div>
 
               <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#9ca3af", marginBottom: 7 }}>Si pagás de más mensual:</div>
@@ -453,7 +519,8 @@ function DocPreview({ data, clientName, validez, logoBase64, fotoUrl }) {
       <div style={{ padding: "8px 22px 10px", borderTop: `1px solid ${BORDER}` }}>
         <p style={{ fontSize: 8, color: "#9ca3af", lineHeight: 1.6, margin: 0 }}>
           * Valores de referencia según valor móvil 01/06/2026.{" "}
-          {d.isAAC ? `Adjudicación garantizada en cuota ${d.adjCuota}. ` : "Cuotas fijas por contrato de la 3 a la 13. "}
+          {(d.isAAC || d.isTransitFixed) ? `Adjudicación garantizada en cuota ${d.adjCuota}. ` : "Cuotas fijas por contrato de la 3 a la 13. "}
+          {d.isTransitFixed ? "Beneficios post retiro: 3 primeros services bonificados al 100% (valor estimado) y 2 alícuotas bonificadas. " : ""}
           {d.inclPatent ? `El beneficio del ${Math.round(d.bonifPatentPct*100)}% aplica sobre aranceles de patentamiento. ` : ""}
           {d.descC1Pct > 0 ? `El descuento del ${Math.round(d.descC1Pct*100)}% en cuota 1 es mediante reintegro o descuento directo con Tarjeta de Crédito. ` : ""}
           Sujeto a peritaje final del usado y aprobación crediticia de Ford Plan Óvalo.
@@ -509,14 +576,18 @@ export default function App() {
     } else if (!customFoto) { setFotoUrl(""); }
   };
 
+  const planSel = PLANS[planKey];
+  const isTransitFixedSel = planKey === "transit_van" && isTransit(retiroName);
+
   const handleCalc = () => {
     setError("");
     if (!clientName.trim()) { setError("Ingresá el nombre del cliente."); return; }
     const cap = parseCap(capital);
-    if (!cap) { setError("Ingresá el capital disponible."); return; }
+    // En Transit fijo no se requiere capital
+    if (!isTransitFixedSel && !cap) { setError("Ingresá el capital disponible."); return; }
     const r = calculate(planKey, retiroName, cap, getBonifPct(), getDescC1Pct(), inclGastos, inclDiff, inclPatent);
     if (!r) { setError("Error en el cálculo."); return; }
-    if (r.ofertaReal < 0) { setError(`La oferta es negativa (${fmt(r.ofertaReal)}). El capital no cubre los gastos.`); return; }
+    if (!r.isTransitFixed && r.ofertaReal < 0) { setError(`La oferta es negativa (${fmt(r.ofertaReal)}). El capital no cubre los gastos.`); return; }
     setResult(r); setStep("preview");
   };
 
@@ -539,7 +610,7 @@ export default function App() {
   const IS = { width: "100%", padding: "10px 12px", border: "2px solid #cbd5e1", borderRadius: 8, fontSize: 14, outline: "none", background: "#f8fafc", boxSizing: "border-box" };
   const LS = { display: "block", fontSize: 11, fontWeight: 700, color: "#475569", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.5px" };
   const cap = parseCap(capital);
-  const liveCalc = cap > 0 ? calculate(planKey, retiroName, cap, getBonifPct(), getDescC1Pct(), inclGastos, inclDiff, inclPatent) : null;
+  const liveCalc = (isTransitFixedSel || cap > 0) ? calculate(planKey, retiroName, cap, getBonifPct(), getDescC1Pct(), inclGastos, inclDiff, inclPatent) : null;
 
   const CB = ({ checked, onChange, label }) => (
     <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "7px 10px", background: checked ? "#eff6ff" : "#f8fafc", border: `1.5px solid ${checked ? "#3b82f6" : "#cbd5e1"}`, borderRadius: 7, marginBottom: 6, userSelect: "none" }}>
@@ -585,11 +656,16 @@ export default function App() {
                 </select>
               </div>
             </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={LS}>Capital Disponible del Cliente ($)</label>
-              <input style={IS} placeholder="20000000" value={capital} onChange={e => setCapital(e.target.value)} />
-              {cap > 0 && <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{fmt(cap)}</div>}
-            </div>
+
+            {/* Capital — oculto en modo Transit fijo */}
+            {!isTransitFixedSel && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={LS}>Capital Disponible del Cliente ($)</label>
+                <input style={IS} placeholder="20000000" value={capital} onChange={e => setCapital(e.target.value)} />
+                {cap > 0 && <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{fmt(cap)}</div>}
+              </div>
+            )}
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
               <div>
                 <label style={LS}>Bonif. Patent. (%)</label>
@@ -621,14 +697,17 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 16, padding: 14, background: "#f8fafc", borderRadius: 10, border: "1.5px solid #e2e8f0" }}>
-              <label style={{ ...LS, marginBottom: 10 }}>Incluir en Licitación</label>
-              <CB checked={inclGastos} onChange={e => setInclGastos(e.target.checked)} label={`Gastos de gestión — ${fmt(1500000)}`} />
-              <CB checked={inclDiff} onChange={e => setInclDiff(e.target.checked)}
-                label={`Diferencia de modelo — ${(() => { const vm=allRetiroModels.find(m=>m.name===retiroName)?.vm||0; const diff=vm>(PLANS[planKey]?.vm||0)?vm-(PLANS[planKey]?.vm||0):0; return diff>0?fmt(diff):"$0"; })()}`} />
-              <CB checked={inclPatent} onChange={e => setInclPatent(e.target.checked)}
-                label={`Patentamiento (${Math.round(getBonifPct()*100)}% bonif.) — ${fmt((allRetiroModels.find(m=>m.name===retiroName)?.vm||0)*0.07*(1-getBonifPct()))}`} />
-            </div>
+            {/* Gastos opcionales — ocultos en modo Transit fijo */}
+            {!isTransitFixedSel && (
+              <div style={{ marginBottom: 16, padding: 14, background: "#f8fafc", borderRadius: 10, border: "1.5px solid #e2e8f0" }}>
+                <label style={{ ...LS, marginBottom: 10 }}>Incluir en Licitación</label>
+                <CB checked={inclGastos} onChange={e => setInclGastos(e.target.checked)} label={`Gastos de gestión — ${fmt(1500000)}`} />
+                <CB checked={inclDiff} onChange={e => setInclDiff(e.target.checked)}
+                  label={`Diferencia de modelo — ${(() => { const vm=allRetiroModels.find(m=>m.name===retiroName)?.vm||0; const diff=vm>(PLANS[planKey]?.vm||0)?vm-(PLANS[planKey]?.vm||0):0; return diff>0?fmt(diff):"$0"; })()}`} />
+                <CB checked={inclPatent} onChange={e => setInclPatent(e.target.checked)}
+                  label={`Patentamiento (${Math.round(getBonifPct()*100)}% bonif.) — ${fmt((allRetiroModels.find(m=>m.name===retiroName)?.vm||0)*0.07*(1-getBonifPct()))}`} />
+              </div>
+            )}
 
             <div style={{ marginBottom: 20, padding: 14, background: "#f1f5f9", borderRadius: 10 }}>
               <label style={LS}>Foto Unidad {MODEL_PHOTOS[retiroName] && !customFoto ? "(auto)" : ""}</label>
@@ -636,9 +715,14 @@ export default function App() {
               {fotoUrl && <img src={fotoUrl} alt="" style={{ height: 40, marginTop: 6, objectFit: "contain" }} />}
             </div>
 
-            {(planKey === "ranger_aac3" || planKey === "transit_van") && (
+            {isTransitFixedSel && (
               <div style={{ background: "#ecfdf5", border: "2px solid #34d399", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#047857" }}>
-                ✓ <strong>Adjudicación asegurada en cuota 3:</strong> El cliente integra el {Math.round(PLANS[planKey].intMinPct*100)}% y tiene 3 cuotas pagas al adjudicar.
+                ✓ <strong>Transit · Adjudicación asegurada cuota 3:</strong> Esquema fijo. No requiere capital. Incluye beneficios post retiro (3 services + 2 alícuotas bonificadas).
+              </div>
+            )}
+            {planKey === "ranger_aac3" && (
+              <div style={{ background: "#ecfdf5", border: "2px solid #34d399", borderRadius: 10, padding: 12, marginBottom: 16, fontSize: 12, color: "#047857" }}>
+                ✓ <strong>Ranger · Adjudicación asegurada cuota 3:</strong> El cliente integra el 20% y tiene 3 cuotas pagas al adjudicar.
               </div>
             )}
             {planKey === "territory_sel" && (
@@ -647,12 +731,12 @@ export default function App() {
               </div>
             )}
 
-            {liveCalc && liveCalc.ofertaReal > 0 && (
+            {liveCalc && (isTransitFixedSel || liveCalc.ofertaReal > 0) && (
               <div style={{ background: "#eff6ff", border: "2px solid #93c5fd", borderRadius: 10, padding: 14, marginBottom: 16 }}>
                 <div style={{ fontSize: 10, fontWeight: 800, color: "#001f5b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Vista Rápida</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, textAlign: "center" }}>
                   {[
-                    [liveCalc.isAAC ? "Oferta" : "Puja", fmt(liveCalc.ofertaReal), `${liveCalc.pujaPct.toFixed(1)}% VM`, liveCalc.probColor],
+                    [liveCalc.isTransitFixed ? "Retiro" : (liveCalc.isAAC ? "Oferta" : "Puja"), liveCalc.isTransitFixed ? fmt(liveCalc.plan.intMin) : fmt(liveCalc.ofertaReal), liveCalc.isTransitFixed ? "integr." : `${liveCalc.pujaPct.toFixed(1)}% VM`, liveCalc.isTransitFixed ? "#16a34a" : liveCalc.probColor],
                     ["Canceladas", `${liveCalc.nAdelanto+liveCalc.regalo}`, "cuotas", "#16a34a"],
                     ["Restantes", `${liveCalc.cuotasRestantes}`, `de ${liveCalc.plan.cuotas}`, "#001f5b"],
                     ["Ahorro", fmt(liveCalc.totalAhorro), "total", "#16a34a"]
